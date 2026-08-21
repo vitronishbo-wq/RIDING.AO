@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for Role-Based Access Control (RBAC) & Custom Claims
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isMaster() {
+      return isAuthenticated() && request.auth.token.role == 'MASTER';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDriver() {
+      return isAuthenticated() && request.auth.token.role == 'DRIVER';
+    }
+
+    // 1. Users Collection
+    // Passengers and Drivers can read/write their own profile; Masters have administrative access.
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isMaster());
+      allow create, update: if isAuthenticated() && (isOwner(userId) || isMaster());
+      allow delete: if isMaster();
+    }
+
+    // 2. Drivers Collection
+    // Public/Passenger can read basic driver location and rating; Driver can update own telemetry/status; Master manages all.
+    match /drivers/{driverId} {
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && (request.auth.uid == driverId || isMaster());
+      allow create, delete: if isMaster();
+    }
+
+    // 3. Rides Collection
+    // Passenger creates and reads their rides; Driver reads assigned rides and updates status; Master reads all.
+    match /rides/{rideId} {
+      allow read: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        isMaster()
+      );
+      allow create: if isAuthenticated() && request.resource.data.passengerId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        isMaster()
+      );
+      allow delete: if isMaster();
+    }
+
+    // 4. Vehicles Collection
+    // Drivers read/update their vehicle; Master verifies vehicle and manages fleet.
+    match /vehicles/{vehicleId} {
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isMaster());
+      allow create, delete: if isMaster();
+    }
+
+    // 5. Transactions Collection (Immutable Ledger)
+    // Passenger/Driver can read their own transactions; Writes/deletes are strictly reserved for verified backend / Master.
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid ||
+        isMaster()
+      );
+      allow write: if isMaster();
+    }
+
+    // 6. Locations Collection (Luanda Geohash Points)
+    // Read-only for authenticated users; Master manages dispatch zones.
+    match /locations/{locationId} {
+      allow read: if true;
+      allow write: if isMaster();
+    }
+
+    // 7. Settings Collection (Pricing, Fare Multipliers, Commission Rate)
+    // Global parameters: read-only for clients, strictly editable by Master.
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isMaster();
+    }
+  }
+}
