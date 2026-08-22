@@ -1,24 +1,31 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
-import { ShieldCheck, Fingerprint, Lock, CheckCircle2, UserCheck, X, Sparkles, Terminal, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, Fingerprint, Lock, CheckCircle2, X, ShieldAlert, AlertCircle } from 'lucide-react';
 
 export const MasterAuthModal: React.FC = () => {
   const { masterAuthModalOpen, setMasterAuthModalOpen, authenticateMaster, setShamirBreakglassOpen } = useSystem();
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authStep, setAuthStep] = useState<'prompt' | 'verifying' | 'granted'>('prompt');
+  const [challengeResponse, setChallengeResponse] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!masterAuthModalOpen) return null;
 
   const handleAuthenticate = (method: 'firebase_auth' | 'biometric') => {
-    setIsAuthenticating(true);
+    setErrorMessage(null);
     setAuthStep('verifying');
 
     setTimeout(() => {
+      const result = authenticateMaster(challengeResponse, method);
+      if (!result.success) {
+        setAuthStep('prompt');
+        setChallengeResponse('');
+        setErrorMessage(result.error || 'Autorização Master recusada.');
+        return;
+      }
       setAuthStep('granted');
       setTimeout(() => {
-        setIsAuthenticating(false);
         setAuthStep('prompt');
-        authenticateMaster(method);
+        setChallengeResponse('');
       }, 700);
     }, 900);
   };
@@ -39,7 +46,7 @@ export const MasterAuthModal: React.FC = () => {
                   ROLE: FOUNDER
                 </span>
               </div>
-              <p className="text-xs text-neutral-400">Gatilho *#7668# &rarr; Verificação de Acesso</p>
+              <p className="text-xs text-neutral-400">Gatilho de Descoberta &rarr; Verificação de Acesso</p>
             </div>
           </div>
           <button
@@ -62,7 +69,9 @@ export const MasterAuthModal: React.FC = () => {
             </div>
 
             <p className="text-[11px] text-neutral-300 leading-relaxed">
-              O código <strong>*#7668#</strong> foi aceito como gatilho de descoberta. A autorização do Modo Master agora é validada via <strong>Firebase Auth</strong> + <strong>Firestore Security Rules</strong> com privilégio de Fundador / Operações.
+              O gatilho de descoberta foi aceito. A autorização do Modo Master exige o desafio do Fundador
+              provisionado no <strong>Bootstrap Vault</strong> e permanece validada por <strong>Firebase Auth</strong> +{' '}
+              <strong>Firestore Security Rules</strong> com privilégio de Fundador / Operações.
             </p>
 
             <div className="pt-2 border-t border-neutral-800/80 grid grid-cols-2 gap-2 text-[10px] text-neutral-400 font-mono">
@@ -80,17 +89,38 @@ export const MasterAuthModal: React.FC = () => {
           {/* Verification States */}
           {authStep === 'prompt' && (
             <div className="space-y-3 pt-2">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-semibold text-neutral-300">Desafio do Fundador:</label>
+                <input
+                  type="password"
+                  value={challengeResponse}
+                  onChange={(e) => setChallengeResponse(e.target.value)}
+                  autoComplete="off"
+                  placeholder="Segredo provisionado via Bootstrap Vault"
+                  className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 font-mono text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-[#FFC107]"
+                />
+              </div>
+
+              {errorMessage && (
+                <p className="text-[11px] text-red-300 flex items-center gap-1.5 bg-red-950/40 p-2 rounded-xl border border-red-900/50">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errorMessage}</span>
+                </p>
+              )}
+
               <button
+                disabled={challengeResponse.length === 0}
                 onClick={() => handleAuthenticate('firebase_auth')}
-                className="w-full py-3.5 px-4 rounded-2xl bg-[#005A2B] text-white font-bold text-xs flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-950 hover:bg-[#004822] active:scale-[0.98] transition-all border border-emerald-500/40"
+                className="w-full py-3.5 px-4 rounded-2xl bg-[#005A2B] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-950 hover:bg-[#004822] active:scale-[0.98] transition-all border border-emerald-500/40"
               >
                 <Lock className="w-4 h-4 text-[#FFC107]" />
                 <span>Autenticar com Firebase Auth Token (Fundador)</span>
               </button>
 
               <button
+                disabled={challengeResponse.length === 0}
                 onClick={() => handleAuthenticate('biometric')}
-                className="w-full py-3 px-4 rounded-2xl bg-neutral-800 text-neutral-200 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-neutral-700 active:scale-[0.98] transition-all border border-neutral-700"
+                className="w-full py-3 px-4 rounded-2xl disabled:opacity-50 bg-neutral-800 text-neutral-200 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-neutral-700 active:scale-[0.98] transition-all border border-neutral-700"
               >
                 <Fingerprint className="w-4 h-4 text-emerald-400" />
                 <span>Validar por Biometria / WebAuthn Passkey</span>

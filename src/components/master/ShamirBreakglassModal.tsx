@@ -1,33 +1,18 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
 import { ShieldAlert, KeyRound, Lock, CheckCircle2, AlertTriangle, X, Terminal, Cpu } from 'lucide-react';
-import { ShamirShareKey } from '../../types/architecture';
-
-const SHAMIR_PRESET_SHARES: ShamirShareKey[] = [
-  {
-    index: 1,
-    label: 'Fragmento 1 (Founder Hardware)',
-    holder: 'Founder Key (Hardware)',
-    hashFragment: '9f8a7c2b3e4d5a1f8902c3b4a5d6e7f8'
-  },
-  {
-    index: 2,
-    label: 'Fragmento 2 (Diretor de Operações)',
-    holder: 'Ops Director (Escrow)',
-    hashFragment: 'a1b2c3d4e5f60718293a4b5c6d7e8f90'
-  },
-  {
-    index: 3,
-    label: 'Fragmento 3 (KMS Cold Disaster Recovery)',
-    holder: 'KMS Cold Disaster Recovery',
-    hashFragment: 'e5f6a7b8c9d0123456789abcdef01234'
-  }
+// Share fragments are held by their custodians (hardware key, escrow, KMS cold
+// recovery) and typed in manually: they are never stored in the source bundle.
+const SHARE_CUSTODIANS = [
+  'Fragmento 1 • Founder Key (Hardware)',
+  'Fragmento 2 • Ops Director (Escrow)',
+  'Fragmento 3 • KMS Cold Disaster Recovery'
 ];
 
 export const ShamirBreakglassModal: React.FC = () => {
   const { shamirBreakglassOpen, setShamirBreakglassOpen, executeShamirBreakglass } = useSystem();
-  const [selectedShare1, setSelectedShare1] = useState<string>(SHAMIR_PRESET_SHARES[0].hashFragment);
-  const [selectedShare2, setSelectedShare2] = useState<string>(SHAMIR_PRESET_SHARES[1].hashFragment);
+  const [selectedShare1, setSelectedShare1] = useState<string>('');
+  const [selectedShare2, setSelectedShare2] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
   if (!shamirBreakglassOpen) return null;
@@ -88,22 +73,13 @@ export const ShamirBreakglassModal: React.FC = () => {
               <span>Apresentar 1º Fragmento:</span>
             </label>
             <div className="space-y-1">
-              <select
-                value={selectedShare1}
-                onChange={(e) => setSelectedShare1(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white font-mono"
-              >
-                {SHAMIR_PRESET_SHARES.map((s) => (
-                  <option key={s.index} value={s.hashFragment}>
-                    {s.label} • {s.holder}
-                  </option>
-                ))}
-              </select>
               <input
-                type="text"
+                type="password"
+                autoComplete="off"
                 value={selectedShare1}
                 onChange={(e) => setSelectedShare1(e.target.value)}
-                className="w-full bg-black/60 border border-neutral-800/80 rounded-lg p-1.5 text-[10px] text-neutral-400 font-mono"
+                placeholder="Fragmento do custódio (hex)"
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white font-mono placeholder-neutral-600"
               />
             </div>
           </div>
@@ -115,22 +91,13 @@ export const ShamirBreakglassModal: React.FC = () => {
               <span>Apresentar 2º Fragmento:</span>
             </label>
             <div className="space-y-1">
-              <select
-                value={selectedShare2}
-                onChange={(e) => setSelectedShare2(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white font-mono"
-              >
-                {SHAMIR_PRESET_SHARES.map((s) => (
-                  <option key={s.index} value={s.hashFragment}>
-                    {s.label} • {s.holder}
-                  </option>
-                ))}
-              </select>
               <input
-                type="text"
+                type="password"
+                autoComplete="off"
                 value={selectedShare2}
                 onChange={(e) => setSelectedShare2(e.target.value)}
-                className="w-full bg-black/60 border border-neutral-800/80 rounded-lg p-1.5 text-[10px] text-neutral-400 font-mono"
+                placeholder="Fragmento de outro custódio (hex)"
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white font-mono placeholder-neutral-600"
               />
             </div>
           </div>
@@ -152,10 +119,17 @@ export const ShamirBreakglassModal: React.FC = () => {
             </div>
           )}
 
+          <ul className="text-[10px] text-neutral-500 font-mono space-y-0.5">
+            {SHARE_CUSTODIANS.map((custodian) => (
+              <li key={custodian}>{custodian}</li>
+            ))}
+          </ul>
+
           {/* Action Button */}
           <button
+            disabled={!selectedShare1 || !selectedShare2}
             onClick={handleExecuteRecovery}
-            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-950 active:scale-[0.98] transition-all"
+            className="w-full py-3 px-4 rounded-2xl disabled:opacity-50 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-950 active:scale-[0.98] transition-all"
           >
             <Cpu className="w-4 h-4" />
             <span>Reconstruir Chave & Ativar Sessão Temporária (60 Min)</span>

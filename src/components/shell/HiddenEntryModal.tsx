@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
+import { DEV_DEBUG_SEQUENCE, DEV_VAULT_TOKEN, secretsMatch } from '../../config/accessConfig';
 import {
   Shield,
   Fingerprint,
@@ -18,7 +19,8 @@ export const HiddenEntryModal: React.FC = () => {
     hiddenEntryModalOpen,
     setHiddenEntryModalOpen,
     escalatePrivileges,
-    currentIdentity
+    currentIdentity,
+    devEscalationEnabled
   } = useSystem();
 
   const [activeMethod, setActiveMethod] = useState<'biometric' | 'debug_code' | 'token'>('biometric');
@@ -26,6 +28,7 @@ export const HiddenEntryModal: React.FC = () => {
   const [tokenInput, setTokenInput] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [challengeSuccess, setChallengeSuccess] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!hiddenEntryModalOpen) return null;
 
@@ -43,18 +46,38 @@ export const HiddenEntryModal: React.FC = () => {
 
   const handleDebugCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsVerifying(true);
     setTimeout(() => {
       setIsVerifying(false);
+      if (!devEscalationEnabled) {
+        setErrorMessage('Elevação de debug desativada neste build.');
+        return;
+      }
+      if (!secretsMatch(debugSequenceInput, DEV_DEBUG_SEQUENCE)) {
+        setDebugSequenceInput('');
+        setErrorMessage('Sequência de debug inválida.');
+        return;
+      }
       escalatePrivileges('debug_sequence');
     }, 800);
   };
 
   const handleTokenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsVerifying(true);
     setTimeout(() => {
       setIsVerifying(false);
+      if (!devEscalationEnabled) {
+        setErrorMessage('Elevação por token de desenvolvimento desativada neste build.');
+        return;
+      }
+      if (!secretsMatch(tokenInput, DEV_VAULT_TOKEN)) {
+        setTokenInput('');
+        setErrorMessage('Token efêmero inválido ou expirado.');
+        return;
+      }
       escalatePrivileges('dev_token');
     }, 800);
   };
@@ -112,8 +135,9 @@ export const HiddenEntryModal: React.FC = () => {
           </button>
 
           <button
+            disabled={!devEscalationEnabled}
             onClick={() => setActiveMethod('debug_code')}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
+            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-40 ${
               activeMethod === 'debug_code'
                 ? 'bg-[#005A2B] text-white shadow'
                 : 'text-neutral-400 hover:text-white'
@@ -124,8 +148,9 @@ export const HiddenEntryModal: React.FC = () => {
           </button>
 
           <button
+            disabled={!devEscalationEnabled}
             onClick={() => setActiveMethod('token')}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
+            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-40 ${
               activeMethod === 'token'
                 ? 'bg-[#005A2B] text-white shadow'
                 : 'text-neutral-400 hover:text-white'
@@ -182,7 +207,8 @@ export const HiddenEntryModal: React.FC = () => {
                 Sequência de Debug / Gesture Pattern:
               </label>
               <input
-                type="text"
+                type="password"
+                autoComplete="off"
                 value={debugSequenceInput}
                 onChange={(e) => setDebugSequenceInput(e.target.value)}
                 placeholder="Ex: UP-DOWN-TAP-TAP-DEV"
@@ -225,6 +251,13 @@ export const HiddenEntryModal: React.FC = () => {
               <span>Validar Token com Vault</span>
             </button>
           </form>
+        )}
+
+        {errorMessage && (
+          <p className="text-[11px] text-red-300 flex items-center gap-1.5 bg-red-950/40 p-2 rounded-xl border border-red-900/50">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>{errorMessage}</span>
+          </p>
         )}
 
         {/* Footer info */}

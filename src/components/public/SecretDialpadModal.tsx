@@ -14,12 +14,10 @@ export const SecretDialpadModal: React.FC = () => {
     if (dialedDigits.length < 12) {
       const next = dialedDigits + char;
       setDialedDigits(next);
-      // Auto-trigger if recognized code entered
-      if (next === '*#7668#' || next === '*#1357#' || next === '135790') {
-        const success = submitDialpadCode(next);
-        if (success) {
-          setDialedDigits('');
-        }
+      // Auto-trigger when the entered sequence matches a provisioned trigger.
+      // Codes live only in the Bootstrap Vault, never in this component.
+      if (submitDialpadCode(next)) {
+        setDialedDigits('');
       }
     }
   };
