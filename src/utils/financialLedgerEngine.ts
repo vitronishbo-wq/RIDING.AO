@@ -40,6 +40,7 @@ import {
   RidingPaymentProvider,
   RidingPaymentTransaction
 } from '../types/architecture';
+import { generateRandomId } from './id';
 
 // =============================================================
 // 1. SECURE SERVER VAULT (Client_ID e Client_Secret ISOLADOS)
@@ -254,7 +255,7 @@ export class SovereignFinancialLedgerEngine {
     );
 
     const paymentIntent: RidingPaymentIntent = {
-      id: `pi_${now}_${Math.random().toString(36).substring(2, 7)}`,
+      id: generateRandomId('pi', 5, false, now),
       rideId: params.rideId,
       idempotencyKey: params.idempotencyKey,
       amountAOA: boundedAmountAOA,
@@ -316,7 +317,7 @@ export class SovereignFinancialLedgerEngine {
     }
 
     const transaction: RidingPaymentTransaction = {
-      id: `tx_${now}_${Math.random().toString(36).substring(2, 6)}`,
+      id: generateRandomId('tx', 4, false, now),
       paymentIntentId: intent.id,
       merchantTransactionID,
       provider,
@@ -542,7 +543,7 @@ export class SovereignFinancialLedgerEngine {
     }
 
     const ledgerEntry: RidingLedgerEntry = {
-      id: `led_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: generateRandomId('led', 4),
       transactionId: params.transactionId,
       merchantTransactionID: params.merchantTransactionID,
       rideId: params.rideId,
@@ -582,7 +583,7 @@ export class SovereignFinancialLedgerEngine {
     const amount = Math.round(params.amountAOA);
 
     const compensationEntry: RidingLedgerEntry = {
-      id: `led_wallet_comp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: generateRandomId('led_wallet_comp', 4),
       transactionId: params.transactionId,
       merchantTransactionID: `WALLET_COMP_${params.merchantTransactionID}`,
       rideId: params.rideId,
@@ -657,7 +658,7 @@ export class SovereignFinancialLedgerEngine {
     }
 
     const compensatingEntry: RidingLedgerEntry = {
-      id: `led_refund_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: generateRandomId('led_refund', 4),
       transactionId: originalEntry.transactionId,
       merchantTransactionID: `REFUND_${originalEntry.merchantTransactionID}`,
       rideId: originalEntry.rideId,
@@ -772,7 +773,7 @@ export class SovereignFinancialLedgerEngine {
    */
   public enqueueInternalRetry(merchantTransactionID: string, action: InternalRetryJob['action']): InternalRetryJob {
     const job: InternalRetryJob = {
-      jobId: `retry_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      jobId: generateRandomId('retry', 4),
       merchantTransactionID,
       action,
       attempts: 0,

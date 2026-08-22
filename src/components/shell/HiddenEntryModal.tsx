@@ -12,6 +12,8 @@ import {
   X,
   Sparkles
 } from 'lucide-react';
+import { ModalShell } from '../common/ModalShell';
+import { SegmentedTabs, SegmentedTabItem } from '../common/SegmentedTabs';
 
 export const HiddenEntryModal: React.FC = () => {
   const {
@@ -26,6 +28,11 @@ export const HiddenEntryModal: React.FC = () => {
   const [tokenInput, setTokenInput] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [challengeSuccess, setChallengeSuccess] = useState<boolean>(false);
+  const methodTabs: SegmentedTabItem<'biometric' | 'debug_code' | 'token'>[] = [
+    { id: 'biometric', label: <span>Biometria</span>, icon: Fingerprint, iconClassName: 'w-4 h-4 text-[#FFC107]' },
+    { id: 'debug_code', label: <span>Sequência</span>, icon: Terminal, iconClassName: 'w-4 h-4 text-emerald-400' },
+    { id: 'token', label: <span>Dev Token</span>, icon: Key, iconClassName: 'w-4 h-4 text-amber-400' }
+  ];
 
   if (!hiddenEntryModalOpen) return null;
 
@@ -60,9 +67,8 @@ export const HiddenEntryModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-neutral-900 border border-neutral-700 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-        {/* Header */}
+    <ModalShell
+      header={
         <div className="flex items-start justify-between pb-4 border-b border-neutral-800">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-[#005A2B] text-[#FFC107] border border-emerald-500/40 shadow-inner">
@@ -84,8 +90,13 @@ export const HiddenEntryModal: React.FC = () => {
             <X className="w-5 h-5" />
           </button>
         </div>
-
-        {/* Identity & Context Banner */}
+      }
+      onClose={() => setHiddenEntryModalOpen(false)}
+      overlayClassName="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      panelClassName="relative w-full bg-neutral-900 border border-neutral-700 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6"
+      contentClassName="space-y-6"
+      maxWidthClassName="max-w-lg"
+    >
         <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 text-xs space-y-1">
           <div className="text-neutral-400">Identidade Atual:</div>
           <div className="font-bold text-white flex items-center justify-between">
@@ -97,44 +108,15 @@ export const HiddenEntryModal: React.FC = () => {
           </p>
         </div>
 
-        {/* Method Selector Tabs */}
-        <div className="grid grid-cols-3 gap-2 bg-neutral-950 p-1.5 rounded-2xl border border-neutral-800 text-xs font-mono">
-          <button
-            onClick={() => setActiveMethod('biometric')}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
-              activeMethod === 'biometric'
-                ? 'bg-[#005A2B] text-white shadow'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            <Fingerprint className="w-4 h-4 text-[#FFC107]" />
-            <span>Biometria</span>
-          </button>
-
-          <button
-            onClick={() => setActiveMethod('debug_code')}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
-              activeMethod === 'debug_code'
-                ? 'bg-[#005A2B] text-white shadow'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            <Terminal className="w-4 h-4 text-emerald-400" />
-            <span>Sequência</span>
-          </button>
-
-          <button
-            onClick={() => setActiveMethod('token')}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
-              activeMethod === 'token'
-                ? 'bg-[#005A2B] text-white shadow'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            <Key className="w-4 h-4 text-amber-400" />
-            <span>Dev Token</span>
-          </button>
-        </div>
+        <SegmentedTabs
+          items={methodTabs}
+          value={activeMethod}
+          onChange={setActiveMethod}
+          containerClassName="grid grid-cols-3 gap-2 bg-neutral-950 p-1.5 rounded-2xl border border-neutral-800 text-xs font-mono"
+          buttonClassName="py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all"
+          activeClassName="bg-[#005A2B] text-white shadow"
+          inactiveClassName="text-neutral-400 hover:text-white"
+        />
 
         {/* Method Content */}
         {activeMethod === 'biometric' && (
@@ -227,12 +209,10 @@ export const HiddenEntryModal: React.FC = () => {
           </form>
         )}
 
-        {/* Footer info */}
         <div className="pt-3 border-t border-neutral-800 flex items-center justify-between text-[11px] text-neutral-500 font-mono">
           <span>SLA Challenge: &lt; 80ms</span>
           <span>Auto-Timeout: 60s</span>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

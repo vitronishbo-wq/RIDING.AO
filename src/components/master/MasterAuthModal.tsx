@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
 import { ShieldCheck, Fingerprint, Lock, CheckCircle2, UserCheck, X, Sparkles, Terminal, ShieldAlert } from 'lucide-react';
+import { ModalShell } from '../common/ModalShell';
 
 export const MasterAuthModal: React.FC = () => {
   const { masterAuthModalOpen, setMasterAuthModalOpen, authenticateMaster, setShamirBreakglassOpen } = useSystem();
@@ -24,9 +25,8 @@ export const MasterAuthModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-neutral-900 border-2 border-[#FFC107]/60 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-white">
-        {/* Header */}
+    <ModalShell
+      header={
         <div className="bg-neutral-950 px-6 py-4 border-b border-neutral-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#005A2B] border border-[#FFC107] flex items-center justify-center text-[#FFC107] shadow-lg shadow-emerald-950">
@@ -49,9 +49,20 @@ export const MasterAuthModal: React.FC = () => {
             <X className="w-4 h-4" />
           </button>
         </div>
-
-        {/* Security Validation Info Card */}
-        <div className="p-6 space-y-4">
+      }
+      onClose={() => setMasterAuthModalOpen(false)}
+      overlayClassName="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+      panelClassName="bg-neutral-900 border-2 border-[#FFC107]/60 rounded-3xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-white"
+      contentClassName="p-6 space-y-4"
+      closeButtonClassName="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+      maxWidthClassName="max-w-md"
+      footer={
+        <div className="px-6 py-3 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-[10px] text-neutral-500 font-mono">
+          <span>GO.BRO.AAO v1.0 • RBAC SECURE</span>
+          <span>SLA &lt; 100ms</span>
+        </div>
+      }
+    >
           <div className="bg-neutral-950/80 border border-neutral-800 rounded-2xl p-4 space-y-2.5 text-xs">
             <div className="flex items-center justify-between text-neutral-400">
               <span>Segurança da Aplicação:</span>
@@ -128,14 +139,6 @@ export const MasterAuthModal: React.FC = () => {
               <p className="text-[11px] text-neutral-400">Carregando os 3 Smartphones do Ecossistema...</p>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-3 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-[10px] text-neutral-500 font-mono">
-          <span>GO.BRO.AAO v1.0 • RBAC SECURE</span>
-          <span>SLA &lt; 100ms</span>
-        </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

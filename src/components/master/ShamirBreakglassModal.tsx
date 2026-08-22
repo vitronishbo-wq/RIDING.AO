@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
 import { ShieldAlert, KeyRound, Lock, CheckCircle2, AlertTriangle, X, Terminal, Cpu } from 'lucide-react';
 import { ShamirShareKey } from '../../types/architecture';
+import { ModalShell } from '../common/ModalShell';
 
 const SHAMIR_PRESET_SHARES: ShamirShareKey[] = [
   {
@@ -43,9 +44,8 @@ export const ShamirBreakglassModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-neutral-900 border-2 border-red-500/80 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-white">
-        {/* Header */}
+    <ModalShell
+      header={
         <div className="bg-neutral-950 px-6 py-4 border-b border-neutral-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-red-950/80 border border-red-500 flex items-center justify-center text-red-400 shadow-lg shadow-red-950">
@@ -68,9 +68,20 @@ export const ShamirBreakglassModal: React.FC = () => {
             <X className="w-4 h-4" />
           </button>
         </div>
-
-        {/* Form content */}
-        <div className="p-6 space-y-4 text-xs">
+      }
+      onClose={() => setShamirBreakglassOpen(false)}
+      overlayClassName="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+      panelClassName="bg-neutral-900 border-2 border-red-500/80 rounded-3xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-white"
+      contentClassName="p-6 space-y-4 text-xs"
+      closeButtonClassName="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+      maxWidthClassName="max-w-lg"
+      footer={
+        <div className="px-6 py-3 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-[10px] text-neutral-500 font-mono">
+          <span>SHAMIR SECRET SHARING • ED25519</span>
+          <span>AUDIT LOG OBRIGATÓRIO</span>
+        </div>
+      }
+    >
           <div className="bg-neutral-950/90 border border-neutral-800 rounded-2xl p-4 space-y-2">
             <div className="flex items-center justify-between text-neutral-400">
               <span>Limiar Criptográfico Exigido:</span>
@@ -160,14 +171,6 @@ export const ShamirBreakglassModal: React.FC = () => {
             <Cpu className="w-4 h-4" />
             <span>Reconstruir Chave & Ativar Sessão Temporária (60 Min)</span>
           </button>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-3 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-[10px] text-neutral-500 font-mono">
-          <span>SHAMIR SECRET SHARING • ED25519</span>
-          <span>AUDIT LOG OBRIGATÓRIO</span>
-        </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

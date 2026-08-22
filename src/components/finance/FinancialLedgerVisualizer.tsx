@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
-import { formatAOA } from '../../utils/geohashUtils';
+import { formatAOA } from '../../utils/pricing';
 import {
   ShieldCheck,
   CreditCard,
@@ -23,6 +23,7 @@ import {
   Copy
 } from 'lucide-react';
 import { RidingPaymentEvent, InternalRetryJob } from '../../types/architecture';
+import { SegmentedTabs, SegmentedTabItem } from '../common/SegmentedTabs';
 
 export const FinancialLedgerVisualizer: React.FC = () => {
   const {
@@ -48,6 +49,33 @@ export const FinancialLedgerVisualizer: React.FC = () => {
   const [customEventId, setCustomEventId] = useState<string>('');
   const [customMerchantId, setCustomMerchantId] = useState<string>('');
   const [customEventType, setCustomEventType] = useState<RidingPaymentEvent['eventType']>('PAYMENT_RECEIVED');
+  const subTabs: SegmentedTabItem<'chain' | 'webhook' | 'ledger' | 'reconciliation' | 'retry'>[] = [
+    { id: 'chain', label: <span>1. Cadeia de 5 Passos</span>, icon: Layers, iconClassName: 'w-3.5 h-3.5' },
+    {
+      id: 'webhook',
+      label: <span>2. Ingestão de Webhooks & Idempotência</span>,
+      icon: Send,
+      iconClassName: 'w-3.5 h-3.5'
+    },
+    {
+      id: 'ledger',
+      label: <span>3. Livro-Razão Imutável ({financialLedgerEntries.length})</span>,
+      icon: Database,
+      iconClassName: 'w-3.5 h-3.5'
+    },
+    {
+      id: 'reconciliation',
+      label: <span>4. Conciliação AppyPay ↔ RIDING</span>,
+      icon: CheckCircle2,
+      iconClassName: 'w-3.5 h-3.5'
+    },
+    {
+      id: 'retry',
+      label: <span>5. Retries Internos ({financialRetryQueue.length})</span>,
+      icon: RefreshCw,
+      iconClassName: 'w-3.5 h-3.5'
+    }
+  ];
 
   const selectedTransaction = financialTransactions.find((tx) => tx.merchantTransactionID === selectedTxId) ||
     financialTransactions[0];
@@ -132,67 +160,15 @@ export const FinancialLedgerVisualizer: React.FC = () => {
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-neutral-800 pb-3 text-xs">
-        <button
-          onClick={() => setActiveSubTab('chain')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-            activeSubTab === 'chain'
-              ? 'bg-[#005A2B] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white bg-neutral-950'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>1. Cadeia de 5 Passos</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('webhook')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-            activeSubTab === 'webhook'
-              ? 'bg-[#005A2B] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white bg-neutral-950'
-          }`}
-        >
-          <Send className="w-3.5 h-3.5" />
-          <span>2. Ingestão de Webhooks & Idempotência</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('ledger')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-            activeSubTab === 'ledger'
-              ? 'bg-[#005A2B] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white bg-neutral-950'
-          }`}
-        >
-          <Database className="w-3.5 h-3.5" />
-          <span>3. Livro-Razão Imutável ({financialLedgerEntries.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('reconciliation')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-            activeSubTab === 'reconciliation'
-              ? 'bg-[#005A2B] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white bg-neutral-950'
-          }`}
-        >
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          <span>4. Conciliação AppyPay ↔ RIDING</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('retry')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-            activeSubTab === 'retry'
-              ? 'bg-[#005A2B] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white bg-neutral-950'
-          }`}
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>5. Retries Internos ({financialRetryQueue.length})</span>
-        </button>
-      </div>
+      <SegmentedTabs
+        items={subTabs}
+        value={activeSubTab}
+        onChange={setActiveSubTab}
+        containerClassName="flex flex-wrap gap-2 border-b border-neutral-800 pb-3 text-xs"
+        buttonClassName="px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5"
+        activeClassName="bg-[#005A2B] text-white shadow-sm"
+        inactiveClassName="text-neutral-400 hover:text-white bg-neutral-950"
+      />
 
       {/* Notification Banner */}
       {webhookStatusMessage && (

@@ -108,10 +108,4 @@ export function calculateDriverScore({
   };
 }
 
-export function formatAOA(amount: number): string {
-  return new Intl.NumberFormat('pt-AO', {
-    style: 'currency',
-    currency: 'AOA',
-    maximumFractionDigits: 0
-  }).format(amount).replace('AOA', 'Kz');
-}
+export { formatAOA } from './pricing';

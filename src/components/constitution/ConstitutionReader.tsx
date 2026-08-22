@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { CONSTITUTION_CHAPTERS, FORBIDDEN_TECH_LIST, OPERATIONAL_SLAS } from '../../data/constitutionData';
 import {
   BookOpen,
@@ -19,7 +20,7 @@ import {
 export const ConstitutionReader: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChapterId, setSelectedChapterId] = useState<number>(1);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const { copiedKey, copyToClipboard } = useCopyToClipboard<number>();
 
   const filteredChapters = CONSTITUTION_CHAPTERS.filter(
     (c) =>
@@ -31,9 +32,7 @@ export const ConstitutionReader: React.FC = () => {
   const selectedChapter = CONSTITUTION_CHAPTERS.find((c) => c.id === selectedChapterId) || CONSTITUTION_CHAPTERS[0];
 
   const handleCopyChapter = (chapterId: number, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(chapterId);
-    setTimeout(() => setCopiedId(null), 2000);
+    copyToClipboard(chapterId, text);
   };
 
   return (
@@ -137,7 +136,7 @@ export const ConstitutionReader: React.FC = () => {
               }
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-neutral-300 border border-neutral-700 transition-all"
             >
-              {copiedId === selectedChapter.id ? (
+              {copiedKey === selectedChapter.id ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
                   <span className="text-emerald-400">Copiado!</span>

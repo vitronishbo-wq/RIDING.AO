@@ -15,6 +15,7 @@ import {
   anchorToLocation
 } from '../data/urbanAnchorsData';
 import { calculateHaversineDistanceKm } from './geohashUtils';
+import { calculateFare } from './pricing';
 
 export interface ProgressiveResolution {
   query: string;
@@ -183,13 +184,7 @@ export function parseProgressiveIntent(
     const distKm = Number(calculateHaversineDistanceKm(pickupLoc.lat, pickupLoc.lng, dropoffLoc.lat, dropoffLoc.lng).toFixed(1));
     const duration = Math.max(8, Math.round(distKm * 2.8 + 4));
 
-    const calculatedPrice = Math.max(
-      pricingConfig.minFareAOA,
-      Math.round(
-        (pricingConfig.baseFareAOA + distKm * pricingConfig.perKmFareAOA + duration * pricingConfig.perMinuteFareAOA) *
-          pricingConfig.dynamicMultiplier
-      )
-    );
+    const calculatedPrice = calculateFare(pricingConfig, distKm, duration);
 
     const plan: OperationalTripPlan = {
       actionType: isPickupAction ? 'BUSCAR_TERCEIRO' : isDeliveryAction ? 'LEVAR_TERCEIRO' : 'ENTREGAR_ENCOMENDA',
@@ -222,13 +217,7 @@ export function parseProgressiveIntent(
     const distKm = Number(calculateHaversineDistanceKm(pickupLoc.lat, pickupLoc.lng, dropoffLoc.lat, dropoffLoc.lng).toFixed(1));
     const duration = Math.max(6, Math.round(distKm * 2.6 + 3));
 
-    const calculatedPrice = Math.max(
-      pricingConfig.minFareAOA,
-      Math.round(
-        (pricingConfig.baseFareAOA + distKm * pricingConfig.perKmFareAOA + duration * pricingConfig.perMinuteFareAOA) *
-          pricingConfig.dynamicMultiplier
-      )
-    );
+    const calculatedPrice = calculateFare(pricingConfig, distKm, duration);
 
     const plan: OperationalTripPlan = {
       actionType: isRegion ? 'DESTINO_EM_ABERTO' : 'DESLOCACAO_PROPRIA',
@@ -268,10 +257,7 @@ export function parseProgressiveIntent(
   const dropoffLoc = anchorToLocation(fallbackAnchor);
   const distKm = Number(calculateHaversineDistanceKm(pickupLoc.lat, pickupLoc.lng, dropoffLoc.lat, dropoffLoc.lng).toFixed(1));
   const duration = 15;
-  const calculatedPrice = Math.max(
-    pricingConfig.minFareAOA,
-    Math.round((pricingConfig.baseFareAOA + distKm * pricingConfig.perKmFareAOA) * pricingConfig.dynamicMultiplier)
-  );
+  const calculatedPrice = calculateFare(pricingConfig, distKm, duration, false);
 
   return {
     query: raw,

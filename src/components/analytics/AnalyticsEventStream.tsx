@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useSystem } from '../../context/SystemContext';
 import { AnalyticsEvent } from '../../types/architecture';
 import { Activity, CheckCircle2, Copy, Check, Filter, ShieldCheck, Clock, Terminal } from 'lucide-react';
@@ -18,17 +19,15 @@ const OFFICIAL_EVENT_NAMES = [
 export const AnalyticsEventStream: React.FC = () => {
   const { analyticsEvents } = useSystem();
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { copiedKey, copyToClipboard } = useCopyToClipboard<string>();
 
   const filteredEvents =
     selectedFilter === 'all'
       ? analyticsEvents
       : analyticsEvents.filter((e) => e.eventName === selectedFilter);
 
-  const handleCopyEvent = (id: string, payload: any) => {
-    navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopyEvent = (id: string, payload: AnalyticsEvent['payload']) => {
+    copyToClipboard(id, JSON.stringify(payload, null, 2));
   };
 
   return (
@@ -132,7 +131,7 @@ export const AnalyticsEventStream: React.FC = () => {
                     onClick={() => handleCopyEvent(evt.id, evt.payload)}
                     className="p-1 rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white"
                   >
-                    {copiedId === evt.id ? (
+                    {copiedKey === evt.id ? (
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
