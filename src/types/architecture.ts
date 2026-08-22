@@ -161,7 +161,7 @@ export interface CentralFareSettlement {
 
 // [Regra Interna RIDING.ao] - Domínio de métodos suportados pela aplicação
 export type RidingPaymentMethod = 'MULTICAIXA_EXPRESS' | 'MULTICAIXA_REFERENCE' | 'CASH' | 'WALLET';
-export type RidingPaymentIntentStatus = 'Requested' | 'Pending' | 'Success' | 'Failed' | 'Expired';
+export type RidingPaymentIntentStatus = 'Requested' | 'Pending' | 'Success' | 'Failed' | 'Expired' | 'Refunded';
 export type RidingPaymentProvider = 'APPYPAY_GPO' | 'APPYPAY_REF' | 'CASH_DIRECT' | 'INTERNAL_LEDGER';
 
 // [AppyPay Confirmado vs Regra Interna RIDING.ao] - Políticas de Expiração
@@ -356,7 +356,6 @@ export interface RidingLedgerEntry {
   settlementType: 'GPO_SETTLED' | 'REF_SETTLED' | 'CASH_RECONCILED' | 'WALLET_TRANSFER';
   status: 'POSTED_TO_LEDGER' | 'RECONCILED_WITH_APPYPAY' | 'DISPUTED' | 'REVERSED';
   postedAt: number;
-  reconciledAt?: number;
   reconciledAt?: number;
   reconciliationNotes?: string;
 }
