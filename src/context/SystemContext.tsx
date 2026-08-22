@@ -1079,7 +1079,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const merchantTxId = activeTrip.merchantTransactionID || `MTX_RIDING_${activeTrip.id}_${now.toString().slice(-6)}`;
 
     financialLedgerEngine.ingestPaymentEvent({
-      eventId: generateRandomId('ev', 4),
+      eventId: generateRandomId('ev', 4, false, now),
       merchantTransactionID: merchantTxId,
       providerTransactionId: activeTrip.paymentMethod === 'MULTICAIXA_EXPRESS' ? `APPY_GPO_${now}` : undefined,
       eventType,
