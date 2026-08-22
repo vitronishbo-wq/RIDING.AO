@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSystem } from '../../context/SystemContext';
-import { formatAOA } from '../../utils/geohashUtils';
+import { formatAOA, calculateHaversineDistanceKm } from '../../utils/geohashUtils';
 import {
   parseProgressiveIntent,
   getActiveHabitSuggestion,
   generateMulticaixaReference,
+  matchAnchorFromText,
   ProgressiveResolution
 } from '../../utils/intentEngine';
 import {
@@ -32,8 +33,9 @@ import {
   Car,
   Move
 } from 'lucide-react';
-import { URBAN_ANCHORS, REGISTERED_ENTITIES } from '../../data/urbanAnchorsData';
-import { UrbanAnchor } from '../../types/intentTypes';
+import { URBAN_ANCHORS, REGISTERED_ENTITIES, anchorToLocation } from '../../data/urbanAnchorsData';
+import { UrbanAnchor, OperationalTripPlan } from '../../types/intentTypes';
+import { LuandaLocation } from '../../types/architecture';
 
 export const PassengerApp: React.FC = () => {
   const {
@@ -298,7 +300,7 @@ export const PassengerApp: React.FC = () => {
     const destAnchor: UrbanAnchor = matched || {
       id: `anc_custom_${Date.now()}`,
       name: destText,
-      type: 'OUTRO',
+      type: 'PARAGEM_ROTUNDA',
       municipio: 'Luanda',
       bairro: destText,
       popularReference: `Destino: ${destText}`,
@@ -318,9 +320,7 @@ export const PassengerApp: React.FC = () => {
   const handleSelectOriginGps = () => {
     if (!chosenDestination) return;
     const originLoc: LuandaLocation = {
-      lat: passengerGpsLocation.lat,
-      lng: passengerGpsLocation.lng,
-      name: passengerGpsLocation.name
+      ...passengerGpsLocation
     };
     setChosenOrigin(originLoc);
     finalizeTripPlan(originLoc, chosenDestination);
@@ -333,9 +333,13 @@ export const PassengerApp: React.FC = () => {
     const origLoc: LuandaLocation = matched
       ? anchorToLocation(matched)
       : {
+          id: `loc_orig_${Date.now()}`,
+          name: origText,
+          neighborhood: origText,
           lat: -8.835 + (Math.random() - 0.5) * 0.05,
           lng: 13.235 + (Math.random() - 0.5) * 0.05,
-          name: origText
+          geohash: '6krn01',
+          description: `Partida definida: ${origText}`
         };
     setChosenOrigin(origLoc);
     finalizeTripPlan(origLoc, chosenDestination);
@@ -352,16 +356,15 @@ export const PassengerApp: React.FC = () => {
 
     const plan: OperationalTripPlan = {
       actionTitle: `Corrida para ${destination.name}`,
-      actionType: 'SOLO_TAXI',
+      actionType: 'DESLOCACAO_PROPRIA',
+      passengerGpsLocation,
       pickupLocation: origin,
       dropoffLocation: destLoc,
-      destinationAnchor: destination,
-      estimatedDistanceKm: parseFloat(distKm.toFixed(2)),
-      estimatedDurationMinutes: durationMin,
+      isDestinoVivo: !!destination.isRegionOnly,
+      distanceKm: parseFloat(distKm.toFixed(2)),
+      durationMins: durationMin,
       calculatedPriceAOA: priceAOA,
-      isScheduled: false,
-      confidenceScore: 0.98,
-      explanation: 'Viagem resolvida com tarifa dinâmica por GPS.'
+      formulaBreakdown: `Base ${pricingConfig.minFareAOA} Kz + (${distKm.toFixed(1)} km * 1000 Kz/km)`
     };
 
     setResolution({
@@ -713,19 +716,18 @@ export const PassengerApp: React.FC = () => {
                       onClick={() => {
                         // Optional micro-refine
                         if (chosenDestination) {
-                          const refinedLoc: LuandaLocation = {
+                          const currentOrig: LuandaLocation = chosenOrigin
+                            ? 'neighborhood' in chosenOrigin
+                              ? (chosenOrigin as LuandaLocation)
+                              : anchorToLocation(chosenOrigin as UrbanAnchor)
+                            : passengerGpsLocation;
+
+                          finalizeTripPlan(currentOrig, {
+                            ...chosenDestination,
                             lat: chosenDestination.lat + 0.002,
                             lng: chosenDestination.lng + 0.002,
                             name: `${chosenDestination.name} (Ponto Refinado)`
-                          };
-                          finalizeTripPlan(
-                            chosenOrigin
-                              ? 'lat' in chosenOrigin
-                                ? (chosenOrigin as LuandaLocation)
-                                : anchorToLocation(chosenOrigin as UrbanAnchor)
-                              : passengerGpsLocation,
-                            { ...chosenDestination, lat: refinedLoc.lat, lng: refinedLoc.lng, name: refinedLoc.name }
-                          );
+                          });
                         }
                       }}
                       className="px-2 py-0.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-600 transition-colors"
