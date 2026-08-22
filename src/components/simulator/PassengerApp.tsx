@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSystem } from '../../context/SystemContext';
+import { DeviceViewportWrapper } from '../shell/DeviceViewportWrapper';
 import { formatAOA, calculateHaversineDistanceKm } from '../../utils/geohashUtils';
 import {
   parseProgressiveIntent,
@@ -448,7 +449,11 @@ export const PassengerApp: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[360px] mx-auto bg-neutral-950 border-[7px] border-neutral-700/90 ring-1 ring-white/15 rounded-[40px] overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col h-[680px] relative text-white select-none">
+    <DeviceViewportWrapper
+      policy="MOBILE_ONLY"
+      appName="Passenger"
+      borderAccentColor="border-neutral-700/90"
+    >
       {/* 1. Mobile Top Notch & Status Bar */}
       <div className="absolute top-0 inset-x-0 z-30 bg-neutral-950/85 backdrop-blur-md px-5 py-2 flex items-center justify-between text-[11px] font-mono text-neutral-300 border-b border-white/5">
         <span className="font-bold">09:41</span>
@@ -793,7 +798,7 @@ export const PassengerApp: React.FC = () => {
                     onClick={handleConfirmOrder}
                     className="flex-1 py-3 rounded-2xl bg-[#005A2B] text-white font-bold text-xs hover:bg-[#004822] shadow-lg shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 active:scale-98"
                   >
-                    <span>Pedir Go.Bro</span>
+                    <span>Pedir RIDING.ao</span>
                     <span className="text-[#FFC107] font-mono font-bold">
                       • {formatAOA(resolution.plan.calculatedPriceAOA)}
                     </span>
@@ -969,13 +974,21 @@ export const PassengerApp: React.FC = () => {
             <p className="text-[11px] text-neutral-400">Viagem liquidada com sucesso</p>
           </div>
 
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3 space-y-1 text-xs font-mono">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3 space-y-1.5 text-xs font-mono">
             <div className="flex justify-between text-neutral-400 text-[10px]">
-              <span>TOTAL PAGO</span>
-              <span>85% MOTORISTA / 15% GO.BRO</span>
+              <span>TOTAL LIQUIDADO (CENTRAL LEDGER)</span>
+              <span className="text-emerald-400 font-bold">
+                {activeTrip.settlementStatus === 'SETTLED_CENTRAL' ? 'CONFIRMADO' : 'PENDENTE RECONCILIAÇÃO'}
+              </span>
             </div>
-            <div className="text-base font-black text-[#FFC107]">{formatAOA(activeTrip.priceAOA)}</div>
-            <div className="text-[10px] text-neutral-400">{activeTrip.distanceKm} km percorridos</div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-base font-black text-[#FFC107]">{formatAOA(activeTrip.priceAOA)}</span>
+              <span className="text-[10px] text-neutral-400">{activeTrip.distanceKm} km • Piso 500 Kz</span>
+            </div>
+            <div className="text-[10px] text-neutral-400 pt-1 border-t border-neutral-800 flex justify-between">
+              <span>Motorista Líquido (85%): <strong className="text-white">{formatAOA(Math.round(activeTrip.priceAOA * 0.85))}</strong></span>
+              <span>RIDING.ao (15%): <strong className="text-emerald-400">{formatAOA(Math.round(activeTrip.priceAOA * 0.15))}</strong></span>
+            </div>
           </div>
 
           {/* Rating */}
@@ -1013,6 +1026,6 @@ export const PassengerApp: React.FC = () => {
           )}
         </div>
       )}
-    </div>
+    </DeviceViewportWrapper>
   );
 };

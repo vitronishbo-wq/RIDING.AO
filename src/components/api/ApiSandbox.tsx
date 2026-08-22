@@ -108,6 +108,47 @@ const OFFICIAL_APIS: ApiEndpoint[] = [
       transaction_id: 'EMIS_AO_88291039',
       paid_at: '2026-08-20T10:45:00Z'
     }
+  },
+  {
+    method: 'POST',
+    path: '/payments/intent',
+    prefix: '/v1/passenger',
+    description: 'Cria intenção imutável de pagamento com autoridade central e chave de idempotência',
+    sampleBody: {
+      rideId: 'trip_892102',
+      officialAmountAOA: 4200,
+      paymentMethod: 'MULTICAIXA_EXPRESS',
+      idempotencyKey: 'idemp_pass_trip_892102'
+    },
+    sampleResponse: {
+      paymentIntentId: 'intent_892102_a1',
+      status: 'REQUIRES_TRANSACTION',
+      officialAmountAOA: 4200,
+      idempotencyKey: 'idemp_pass_trip_892102'
+    }
+  },
+  {
+    method: 'POST',
+    path: '/webhooks/appypay',
+    prefix: '/v1/admin',
+    description: 'Ingestão de Webhooks AppyPay com proteção contra duplicados e fora-de-ordem',
+    sampleBody: {
+      eventId: 'wh_ev_20260822_99',
+      merchantTransactionID: 'MTX_RIDING_trip_892102_01',
+      providerTransactionId: 'APPY_GPO_99182',
+      eventType: 'PAYMENT_RECEIVED',
+      rawPayload: {
+        amountAOA: 4200,
+        status: 'SUCCESS',
+        timestamp: 1771692000000
+      }
+    },
+    sampleResponse: {
+      success: true,
+      processingStatus: 'PROCESSED',
+      postedToLedger: true,
+      ledgerEntryId: 'LEDG_892102_01'
+    }
   }
 ];
 

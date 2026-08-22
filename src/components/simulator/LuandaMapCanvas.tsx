@@ -5,7 +5,16 @@ import { getAdaptiveGpsInterval } from '../../utils/adaptiveGps';
 import { Navigation, MapPin, Radio, Shield, Gauge } from 'lucide-react';
 
 export const LuandaMapCanvas: React.FC = () => {
-  const { drivers, activeTrip, selectedOrigin, selectedDestination, lastMatchingLatencyMs } = useSystem();
+  const {
+    drivers,
+    activeTrip,
+    selectedOrigin,
+    selectedDestination,
+    lastMatchingLatencyMs,
+    isGpsSignalLost,
+    driverDeadReckoningSec,
+    driverGpsConfidence
+  } = useSystem();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Map Bounds for Luanda center
@@ -161,6 +170,7 @@ export const LuandaMapCanvas: React.FC = () => {
       drivers.forEach((driver) => {
         const pt = projectToCanvas(driver.lat, driver.lng, width, height);
         const isMatched = activeTrip?.driverId === driver.id;
+        const isCurrentDriver = driver.id === 'drv_manuel_01';
 
         // Pulse wave for matched driver or active driver
         if (isMatched || driver.status === 'online') {
@@ -170,6 +180,21 @@ export const LuandaMapCanvas: React.FC = () => {
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, pulseRadius, 0, Math.PI * 2);
           ctx.stroke();
+        }
+
+        // Dead Reckoning Uncertainty Ring if Signal is Lost
+        if (isCurrentDriver && isGpsSignalLost) {
+          const uncertaintyRadius = Math.min(48, 16 + driverDeadReckoningSec * 2.2);
+          ctx.strokeStyle = driverDeadReckoningSec > 15 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(245, 158, 11, 0.7)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, uncertaintyRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = driverDeadReckoningSec > 15 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.15)';
+          ctx.fill();
         }
 
         // Driver Car Icon Node
@@ -187,8 +212,14 @@ export const LuandaMapCanvas: React.FC = () => {
         ctx.fillText(driver.name.split(' ')[0], pt.x + 9, pt.y - 4);
 
         ctx.font = '8px monospace';
-        ctx.fillStyle = '#94A3B8';
-        ctx.fillText(`${driver.speedKmH} km/h`, pt.x + 9, pt.y + 6);
+        ctx.fillStyle = isCurrentDriver && isGpsSignalLost ? '#F59E0B' : '#94A3B8';
+        ctx.fillText(
+          isCurrentDriver && isGpsSignalLost
+            ? `DR ${driverDeadReckoningSec}s (${driverGpsConfidence.slice(0, 5)})`
+            : `${driver.speedKmH} km/h`,
+          pt.x + 9,
+          pt.y + 6
+        );
       });
 
       animationFrameId = requestAnimationFrame(render);

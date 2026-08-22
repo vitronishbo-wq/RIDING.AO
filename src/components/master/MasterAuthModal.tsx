@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
-import { ShieldCheck, Fingerprint, Lock, CheckCircle2, UserCheck, X, Sparkles, Terminal } from 'lucide-react';
+import { ShieldCheck, Fingerprint, Lock, CheckCircle2, UserCheck, X, Sparkles, Terminal, ShieldAlert } from 'lucide-react';
 
 export const MasterAuthModal: React.FC = () => {
-  const { masterAuthModalOpen, setMasterAuthModalOpen, authenticateMaster } = useSystem();
+  const { masterAuthModalOpen, setMasterAuthModalOpen, authenticateMaster, setShamirBreakglassOpen } = useSystem();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authStep, setAuthStep] = useState<'prompt' | 'verifying' | 'granted'>('prompt');
 
@@ -95,6 +95,19 @@ export const MasterAuthModal: React.FC = () => {
                 <Fingerprint className="w-4 h-4 text-emerald-400" />
                 <span>Validar por Biometria / WebAuthn Passkey</span>
               </button>
+
+              <div className="pt-2 border-t border-neutral-800">
+                <button
+                  onClick={() => {
+                    setMasterAuthModalOpen(false);
+                    setShamirBreakglassOpen(true);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-2xl bg-red-950/40 text-red-300 hover:bg-red-950/80 font-bold text-xs flex items-center justify-center gap-2 border border-red-800/60 transition-all"
+                >
+                  <ShieldAlert className="w-4 h-4 text-red-400" />
+                  <span>Recuperação Break-Glass (Shamir 2 de 3)</span>
+                </button>
+              </div>
             </div>
           )}
 

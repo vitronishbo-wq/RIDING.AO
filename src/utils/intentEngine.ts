@@ -321,10 +321,11 @@ export function generateMulticaixaReference(
   const refNum = `${phoneClean}${tripNum}`.padEnd(9, '7');
 
   return {
-    entidade: '00123', // Entidade Oficial Go.Bro
+    entidade: '00123', // Entidade Oficial RIDING.ao
     referencia: `${refNum.slice(0, 3)} ${refNum.slice(3, 6)} ${refNum.slice(6, 9)}`,
     valorAOA: priceAOA,
-    expiraEmMinutos: 30,
+    expiraEmMinutos: 4320, // 72 horas no gateway AppyPay (APPY_PAY_EXPIRATION)
+    expiraEmHorasGateway: 72,
     driverPhone,
     driverName
   };

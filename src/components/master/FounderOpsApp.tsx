@@ -17,7 +17,12 @@ import {
   UserX,
   Key,
   Shield,
-  Trash2
+  Trash2,
+  RefreshCw,
+  FileCheck,
+  ShieldAlert,
+  Coins,
+  Send
 } from 'lucide-react';
 
 export const FounderOpsApp: React.FC = () => {
@@ -33,12 +38,25 @@ export const FounderOpsApp: React.FC = () => {
     blockUserCredential,
     unblockUserCredential,
     updateUserCredential,
-    removeUserCredential
+    removeUserCredential,
+    revokeUserSessions,
+    cashReconciliationBatches,
+    executeDailyCashReconciliation,
+    financialIntents,
+    financialTransactions,
+    financialEvents,
+    financialLedgerEntries,
+    financialRetryQueue,
+    simulateIncomingWebhook,
+    triggerCompensatingRefund,
+    runAppyPayReconciliation,
+    setShamirBreakglassOpen
   } = useSystem();
 
-  const [activeTab, setActiveTab] = useState<'dispatch' | 'pricing' | 'credentials' | 'finance'>('dispatch');
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'pricing' | 'credentials' | 'finance' | 'reconciliation' | 'ledger'>('dispatch');
   const [editingPinId, setEditingPinId] = useState<string | null>(null);
   const [newPinValue, setNewPinValue] = useState<string>('');
+  const [reconcileSuccess, setReconcileSuccess] = useState<string | null>(null);
 
   const onlineDriversCount = drivers.filter((d) => d.status !== 'offline').length;
   const totalFleetBalanceAOA = drivers.reduce((acc, d) => acc + d.walletBalanceAOA, 0);
@@ -50,6 +68,12 @@ export const FounderOpsApp: React.FC = () => {
       setEditingPinId(null);
       setNewPinValue('');
     }
+  };
+
+  const handleRunReconciliation = () => {
+    const batch = executeDailyCashReconciliation();
+    setReconcileSuccess(`Lote ${batch.batchId} reconciliado com sucesso no livro-razão!`);
+    setTimeout(() => setReconcileSuccess(null), 4000);
   };
 
   return (
@@ -125,6 +149,22 @@ export const FounderOpsApp: React.FC = () => {
           }`}
         >
           Faturamento
+        </button>
+        <button
+          onClick={() => setActiveTab('reconciliation')}
+          className={`px-2 py-1 rounded-lg transition-colors shrink-0 ${
+            activeTab === 'reconciliation' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          Conciliação (Dinheiro)
+        </button>
+        <button
+          onClick={() => setActiveTab('ledger')}
+          className={`px-2 py-1 rounded-lg transition-colors shrink-0 ${
+            activeTab === 'ledger' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          Livro-Razão & AppyPay
         </button>
       </div>
 
@@ -402,35 +442,49 @@ export const FounderOpsApp: React.FC = () => {
                     )}
 
                     {/* Superadmin actions */}
-                    {cred.role !== 'SUPERADMIN' && (
-                      <div className="flex items-center gap-1.5 pt-1 border-t border-neutral-800/60">
-                        {isBlocked ? (
-                          <button
-                            onClick={() => unblockUserCredential(cred.id)}
-                            className="flex-1 py-1 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
-                          >
-                            <Unlock className="w-3 h-3" />
-                            <span>Desbloquear Acesso</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => blockUserCredential(cred.id, 'Incidente reportado')}
-                            className="flex-1 py-1 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
-                          >
-                            <UserX className="w-3 h-3" />
-                            <span>Bloquear Incidente</span>
-                          </button>
-                        )}
-
+                    <div className="space-y-1.5 pt-1 border-t border-neutral-800/60">
+                      <div className="flex items-center justify-between text-[10px] text-neutral-400 font-mono">
+                        <span>Época Token: v{cred.sessionEpoch || 1}</span>
                         <button
-                          onClick={() => removeUserCredential(cred.id)}
-                          className="p-1 rounded-xl bg-neutral-800 hover:bg-red-900 text-neutral-400 hover:text-red-200 border border-neutral-700 text-[10px] transition-colors"
-                          title="Remover credencial"
+                          onClick={() => revokeUserSessions(cred.id)}
+                          className="px-2 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-800 text-[9px] font-bold flex items-center gap-1 transition-all"
+                          title="Revogar todas as sessões e tokens imediatamente (Zero Redis)"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <RefreshCw className="w-2.5 h-2.5" />
+                          <span>Revogar Sessões</span>
                         </button>
                       </div>
-                    )}
+
+                      {cred.role !== 'SUPERADMIN' && (
+                        <div className="flex items-center gap-1.5">
+                          {isBlocked ? (
+                            <button
+                              onClick={() => unblockUserCredential(cred.id)}
+                              className="flex-1 py-1 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <Unlock className="w-3 h-3" />
+                              <span>Desbloquear Acesso</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => blockUserCredential(cred.id, 'Incidente reportado')}
+                              className="flex-1 py-1 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <UserX className="w-3 h-3" />
+                              <span>Bloquear Incidente</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => removeUserCredential(cred.id)}
+                            className="p-1 rounded-xl bg-neutral-800 hover:bg-red-900 text-neutral-400 hover:text-red-200 border border-neutral-700 text-[10px] transition-colors"
+                            title="Remover credencial"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -465,7 +519,7 @@ export const FounderOpsApp: React.FC = () => {
 
                 <div className="bg-neutral-900 p-2.5 rounded-xl border border-neutral-800 flex justify-between items-center">
                   <div>
-                    <div className="text-[10px] text-neutral-400">Comissão Go.Bro (15%):</div>
+                    <div className="text-[10px] text-neutral-400">Comissão RIDING.ao (15%):</div>
                     <div className="font-mono text-base font-black text-[#FFC107]">
                       {formatAOA(platformRevenueEstAOA)}
                     </div>
@@ -475,6 +529,189 @@ export const FounderOpsApp: React.FC = () => {
                   </span>
                 </div>
               </div>
+
+              <div className="pt-2 border-t border-neutral-800 flex justify-between items-center text-[10px] text-neutral-400 font-mono">
+                <span>Piso Tarifário Mínimo: <strong>{pricingConfig.minFareAOA} Kz</strong></span>
+                <span>Split: <strong>Automático Server</strong></span>
+              </div>
+            </div>
+
+            {/* Break-glass emergency button */}
+            <div className="bg-red-950/30 border border-red-900/60 rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-red-200">
+                <span className="flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-red-400" />
+                  <span>Protocolo Break-Glass</span>
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-950 text-red-300 font-mono">
+                  SHAMIR 2/3
+                </span>
+              </div>
+              <p className="text-[10px] text-red-300/80">
+                Recuperação de contingência para restaurar credenciais mestras em caso de perda do token principal.
+              </p>
+              <button
+                onClick={() => setShamirBreakglassOpen(true)}
+                className="w-full py-2 rounded-xl bg-red-950 hover:bg-red-900 text-red-200 border border-red-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <Key className="w-3.5 h-3.5 text-amber-400" />
+                <span>Abrir Cofre Shamir (2 de 3)</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: DAILY CASH RECONCILIATION */}
+        {activeTab === 'reconciliation' && (
+          <div className="space-y-3">
+            <div className="bg-neutral-950/90 border border-neutral-800 rounded-2xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-bold text-white">
+                <span className="flex items-center gap-1.5">
+                  <Coins className="w-4 h-4 text-[#FFC107]" />
+                  <span>Conciliação Diária de Dinheiro / Voucher</span>
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950 text-[#FFC107] font-mono">
+                  LOTE DIÁRIO
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-400 leading-relaxed">
+                As viagens em dinheiro declaradas pelos motoristas são confrontadas com o livro-razão central. A comissão de 15% é debitada da carteira e o lote é arquivado com hash imutável.
+              </p>
+
+              {reconcileSuccess && (
+                <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-[11px] flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  <span>{reconcileSuccess}</span>
+                </div>
+              )}
+
+              <button
+                onClick={handleRunReconciliation}
+                className="w-full py-2.5 rounded-xl bg-[#005A2B] hover:bg-[#004822] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-950 active:scale-[0.98] transition-all"
+              >
+                <FileCheck className="w-4 h-4 text-[#FFC107]" />
+                <span>Executar Fecho e Conciliação em Lote Diário</span>
+              </button>
+            </div>
+
+            {/* List of Reconciled Batches */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-neutral-300 flex items-center justify-between">
+                <span>Histórico de Lotes Reconciliados</span>
+                <span className="text-[10px] font-mono text-neutral-500">{cashReconciliationBatches.length} lotes</span>
+              </div>
+
+              {cashReconciliationBatches.map((batch) => (
+                <div
+                  key={batch.batchId}
+                  className="bg-neutral-950 border border-neutral-800 rounded-2xl p-2.5 space-y-1.5 text-xs font-mono"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-white font-bold text-[11px]">{batch.batchId}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[9px] font-bold">
+                      {batch.status.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[10px] text-neutral-400">
+                    <div>Viagens: <strong className="text-white">{batch.totalTripsCount}</strong></div>
+                    <div>Dinheiro: <strong className="text-[#FFC107]">{formatAOA(batch.totalDeclaredCashAOA)}</strong></div>
+                    <div>Comissão 15%: <strong className="text-emerald-400">{formatAOA(batch.totalPlatformCommissionAOA)}</strong></div>
+                    <div className="truncate">Auditor: <span className="text-neutral-300">{batch.auditorId.slice(0, 14)}</span></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: SOVEREIGN FINANCIAL LEDGER & APPYPAY (CHAPTER 17) */}
+        {activeTab === 'ledger' && (
+          <div className="space-y-3 font-mono">
+            <div className="bg-neutral-950/90 border border-neutral-800 rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-white">
+                <span className="flex items-center gap-1.5 font-sans">
+                  <Coins className="w-4 h-4 text-[#FFC107]" />
+                  <span>Livro-Razão & Gateway AppyPay</span>
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300">
+                  ACID
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-400 font-sans leading-relaxed">
+                PostgreSQL como única fonte contábil. Split 85% Motorista / 15% Plataforma com rastreabilidade completa.
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 text-[10px]">
+                <div className="bg-neutral-900 p-2 rounded-xl border border-neutral-800">
+                  <span className="text-neutral-500 text-[9px]">Intenções:</span>
+                  <div className="text-white font-bold">{financialIntents.length}</div>
+                </div>
+                <div className="bg-neutral-900 p-2 rounded-xl border border-neutral-800">
+                  <span className="text-neutral-500 text-[9px]">Transações:</span>
+                  <div className="text-white font-bold">{financialTransactions.length}</div>
+                </div>
+                <div className="bg-neutral-900 p-2 rounded-xl border border-neutral-800">
+                  <span className="text-neutral-500 text-[9px]">Eventos Brutos:</span>
+                  <div className="text-white font-bold">{financialEvents.length}</div>
+                </div>
+                <div className="bg-neutral-900 p-2 rounded-xl border border-neutral-800">
+                  <span className="text-neutral-500 text-[9px]">Lançamentos:</span>
+                  <div className="text-emerald-400 font-bold">{financialLedgerEntries.length}</div>
+                </div>
+              </div>
+
+              {/* Quick Action: Trigger Compensating Refund */}
+              <button
+                onClick={() => {
+                  const targetTx = financialTransactions[0]?.merchantTransactionID;
+                  if (targetTx) {
+                    const res = triggerCompensatingRefund(targetTx, 'Estorno solicitado via Central Ops');
+                    setReconcileSuccess(`Estorno: ${res.message}`);
+                    setTimeout(() => setReconcileSuccess(null), 4000);
+                  }
+                }}
+                className="w-full py-2 rounded-xl bg-purple-950/60 hover:bg-purple-900/60 text-purple-200 border border-purple-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors font-sans"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-purple-400" />
+                <span>Simular Estorno Compensatório</span>
+              </button>
+
+              {/* Quick Action: Simulate Webhook */}
+              <button
+                onClick={() => {
+                  const targetTx = financialTransactions[0]?.merchantTransactionID || 'MTX_RIDING_TRIP_01';
+                  const res = simulateIncomingWebhook({
+                    merchantTransactionID: targetTx,
+                    eventType: 'PAYMENT_RECEIVED'
+                  });
+                  setReconcileSuccess(`Webhook Ingerido: [${res.processingStatus}]`);
+                  setTimeout(() => setReconcileSuccess(null), 4000);
+                }}
+                className="w-full py-2 rounded-xl bg-[#005A2B] hover:bg-[#004822] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors font-sans shadow-md"
+              >
+                <Send className="w-3.5 h-3.5 text-[#FFC107]" />
+                <span>Simular Webhook PAYMENT_RECEIVED</span>
+              </button>
+            </div>
+
+            {/* Latest Ledger Entries */}
+            <div className="space-y-1.5">
+              <div className="text-[10px] text-neutral-400 font-sans font-bold flex justify-between">
+                <span>Últimos Lançamentos Imutáveis</span>
+                <span>{financialLedgerEntries.length} registros</span>
+              </div>
+              {financialLedgerEntries.slice(0, 4).map((entry) => (
+                <div key={entry.id} className="bg-neutral-950 p-2 rounded-xl border border-neutral-800 text-[10px] space-y-1">
+                  <div className="flex justify-between font-bold">
+                    <span className="text-white">{entry.id}</span>
+                    <span className="text-[#FFC107]">{formatAOA(entry.grossAmountAOA)}</span>
+                  </div>
+                  <div className="flex justify-between text-neutral-400 text-[9px]">
+                    <span>{entry.entryType}</span>
+                    <span className="text-emerald-400">Mot: {formatAOA(entry.driverShareAOA)}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -482,7 +719,7 @@ export const FounderOpsApp: React.FC = () => {
 
       {/* Ops Footer */}
       <div className="p-2.5 bg-neutral-950 border-t border-neutral-800 shrink-0 text-center text-[10px] text-neutral-500 font-mono">
-        Go.Bro Superadmin • Telemetria Operacional
+        RIDING.ao Superadmin • Telemetria Operacional
       </div>
     </div>
   );

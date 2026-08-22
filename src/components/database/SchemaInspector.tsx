@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 export const SchemaInspector: React.FC = () => {
-  const { firestoreData, postgresData } = useSystem();
+  const { firestoreData, postgresData, financialLedgerEntries } = useSystem();
   const [activeEngine, setActiveEngine] = useState<'firestore' | 'postgres'>('firestore');
   const [selectedCollection, setSelectedCollection] = useState<string>('drivers_online');
   const [selectedTable, setSelectedTable] = useState<string>('trips');
@@ -33,7 +33,8 @@ export const SchemaInspector: React.FC = () => {
     { name: 'trips', desc: 'Histórico auditado de corridas e tarifas' },
     { name: 'payments', desc: 'Transações financeiras EMIS / Multicaixa' },
     { name: 'wallet', desc: 'Saldos em Kwanzas (AOA) de passageiros e motoristas' },
-    { name: 'ratings', desc: 'Avaliações de 1 a 5 estrelas e feedbacks' }
+    { name: 'ratings', desc: 'Avaliações de 1 a 5 estrelas e feedbacks' },
+    { name: 'riding_ledger_entries', desc: 'Partida dobrada imutável e split 85/15 soberano' }
   ];
 
   const copyToClipboard = (key: string, content: string) => {
@@ -204,17 +205,17 @@ export const SchemaInspector: React.FC = () => {
               </div>
 
               <span className="text-xs font-mono text-neutral-400">
-                Registros: {(postgresData as any)[selectedTable]?.length || 0}
+                Registros: {selectedTable === 'riding_ledger_entries' ? financialLedgerEntries.length : ((postgresData as any)[selectedTable]?.length || 0)}
               </span>
             </div>
 
             {/* Table Rows Viewer */}
             <div className="overflow-x-auto border border-neutral-800 rounded-2xl">
-              {((postgresData as any)[selectedTable]?.length || 0) > 0 ? (
+              {((selectedTable === 'riding_ledger_entries' ? financialLedgerEntries : (postgresData as any)[selectedTable])?.length || 0) > 0 ? (
                 <table className="w-full text-left text-xs">
                   <thead className="bg-neutral-950 text-neutral-400 font-mono text-[11px] border-b border-neutral-800">
                     <tr>
-                      {Object.keys((postgresData as any)[selectedTable][0]).map((col) => (
+                      {Object.keys((selectedTable === 'riding_ledger_entries' ? financialLedgerEntries : (postgresData as any)[selectedTable])[0]).map((col) => (
                         <th key={col} className="p-3">
                           {col}
                         </th>
@@ -222,7 +223,7 @@ export const SchemaInspector: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-800 text-neutral-300 font-mono text-[11px]">
-                    {(postgresData as any)[selectedTable].map((row: any, i: number) => (
+                    {(selectedTable === 'riding_ledger_entries' ? financialLedgerEntries : (postgresData as any)[selectedTable]).map((row: any, i: number) => (
                       <tr key={i} className="hover:bg-neutral-800/40">
                         {Object.values(row).map((val: any, j: number) => (
                           <td key={j} className="p-3 truncate max-w-[160px]">

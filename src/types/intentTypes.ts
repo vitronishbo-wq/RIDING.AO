@@ -73,7 +73,8 @@ export interface MulticaixaReferenceData {
   entidade: string; // e.g. "00123"
   referencia: string; // e.g. "923 456 789" (Motorista ID / Tel associado)
   valorAOA: number;
-  expiraEmMinutos: number;
+  expiraEmMinutos: number; // 4320 min (72h no gateway AppyPay)
+  expiraEmHorasGateway?: number; // 72h oficial AppyPay
   driverPhone: string;
   driverName: string;
 }

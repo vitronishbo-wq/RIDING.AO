@@ -14,11 +14,12 @@ import {
   MapPin,
   Layers,
   LogOut,
-  UserCheck
+  UserCheck,
+  Coins
 } from 'lucide-react';
 
 interface NavItem {
-  id: 'shell' | 'simulator' | 'constitution' | 'matching' | 'topology' | 'database' | 'api' | 'design' | 'analytics';
+  id: 'shell' | 'simulator' | 'constitution' | 'matching' | 'topology' | 'database' | 'api' | 'design' | 'analytics' | 'finance';
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
@@ -56,6 +57,7 @@ export const Header: React.FC = () => {
     { id: 'matching', label: 'Motor de Matching', icon: Cpu, badge: `${lastMatchingLatencyMs}ms` },
     { id: 'topology', label: 'Topologia & Rede', icon: Network },
     { id: 'database', label: 'Bancos (Firestore / SQL)', icon: Database },
+    { id: 'finance', label: 'Cadeia Financeira (Cap 17)', icon: Coins, badge: 'AppyPay' },
     { id: 'api', label: 'APIs & Payloads', icon: Terminal },
     { id: 'design', label: 'Design System', icon: Palette },
     { id: 'analytics', label: 'Eventos & Auditoria', icon: Activity }

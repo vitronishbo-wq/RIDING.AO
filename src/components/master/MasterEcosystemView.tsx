@@ -59,7 +59,7 @@ export const MasterEcosystemView: React.FC = () => {
                 )}
               </div>
               <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                Os 3 Smartphones do Ecossistema Go.Bro.Aao • Luanda
+                Os 3 Smartphones do Ecossistema RIDING.ao • Luanda
               </h2>
             </div>
           </div>

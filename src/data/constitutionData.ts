@@ -269,6 +269,63 @@ class ModuleRegistry {
       .toList();
   }
 }`
+  },
+  {
+    id: 16,
+    title: "Capítulo 16 — Política de Superfícies de Hardware",
+    subtitle: "DEVICE_SURFACE_POLICY (Public Mobile-Only vs Admin Adaptive)",
+    status: "FROZEN",
+    summary: "Public e Driver são estritamente MOBILE-ONLY (PWA / Android / iOS). Admin / God Founder é ADAPTIVE (Desktop-first / Tablet).",
+    rules: [
+      "Regra Absoluta: PUBLIC e DRIVER jamais devem renderizar uma experiência de browser/desktop expandida. Não é 'mobile-first responsivo'; é estritamente MOBILE-ONLY.",
+      "Desktop não recebe layout alternativo no app de passageiro ou de motorista.",
+      "O Smartphone Frame visual no Console de Desenvolvimento é meramente um harness de teste de desenvolvimento. O frame não faz parte da aplicação.",
+      "Quando o mesmo código roda como PWA instalado ou app móvel real (display-mode: standalone), o app consome 100% da viewport real nativa sem frame artificial.",
+      "ADMIN / GOD FOUNDER opera sob política ADAPTIVE: Desktop-first de alta densidade, tablet e mobile quando operacionalmente adequado."
+    ],
+    codeSnippet: `// Hardware Surface Policy Mapping:
+enum DeviceSurfacePolicy { MOBILE_ONLY, ADAPTIVE }
+
+abstract class SurfaceContract {
+  static const Map<String, DeviceSurfacePolicy> policies = {
+    'PUBLIC_PORTAL': DeviceSurfacePolicy.MOBILE_ONLY,
+    'DRIVER_PORTAL': DeviceSurfacePolicy.MOBILE_ONLY,
+    'ADMIN_GOD_FOUNDER': DeviceSurfacePolicy.ADAPTIVE,
+  };
+}`
+  },
+  {
+    id: 17,
+    title: "Capítulo 17 — Arquitetura Financeira e Separação de Pagamentos",
+    subtitle: "RIDING.ao Financial Ledger & Matriz de Integração AppyPay",
+    status: "FROZEN",
+    summary: "Separação estrita: Ride → PaymentIntent → PaymentTransaction → Webhook → Ledger. Auditoria documental e classificação em 3 níveis antes de codificar.",
+    rules: [
+      "[Regra Interna RIDING.ao] Desacoplamento de Entidades: Nunca modelar corrida = pagamento. O ciclo é RIDE → PAYMENT_INTENT → PAYMENT_TRANSACTION → PAYMENT_EVENT → LEDGER.",
+      "[Regra Interna RIDING.ao] Soberania do Ledger: O Ledger contábil próprio (PostgreSQL) é a única fonte da verdade. AppyPay atua estritamente como gateway de liquidação.",
+      "[Regra Interna RIDING.ao] Isolamento do Cliente Mobile: O app mobile do passageiro NUNCA manipula credenciais AppyPay (client_id/client_secret) e NUNCA dita o estado financeiro.",
+      "[AppyPay Confirmado] Expiração de Referência (72h): No gateway AppyPay, a Referência Multicaixa tem validade oficial de 72 horas (APPY_PAY_EXPIRATION), distinta do timeout de matching da corrida (RIDING_PAYMENT_POLICY de 30 min).",
+      "[AppyPay Confirmado] Inexistência de Refund Automático em REF: A API AppyPay não suporta estorno/reversão automática de Referência Multicaixa. Qualquer estorno é manual ou crédito em carteira interna.",
+      "[Regra Interna RIDING.ao] Liquidação Pós-Cancelamento: Se uma REF for paga após o cancelamento da viagem, a reconciliação e crédito em carteira é uma regra interna do RIDING.ao, não um comportamento automático do gateway.",
+      "[Não Confirmado / Aguardando Docs] Bloqueio de Suposições: IDs numéricos de PaymentMethod, nome do cabeçalho de assinatura do webhook (e.g. HMAC), intervalos de retry e status codes específicos da AppyPay NÃO devem ser assumidos sem prova documental."
+    ],
+    codeSnippet: `// RIDING.ao Financial & Gateway Contract Separation:
+// 1. AppyPay Gateway Expiration (Confirmado: 72 horas):
+const int APPY_PAY_REF_EXPIRATION_HOURS = 72;
+
+// 2. RIDING.ao Operational Timeout Policy (Regra Interna):
+const int RIDING_TRIP_DISPATCH_TIMEOUT_MINS = 30;
+
+// 3. REF Refund Capability (Confirmado: Sem suporte automático via API):
+const bool APPYPAY_REF_SUPPORTS_API_REFUND = false;
+
+// 4. Financial Ledger Split (Regra Interna Sovereign Ledger):
+class SovereignFinancialLedger {
+  final int grossAmountAOA;
+  final int platformCommissionAOA; // 15%
+  final int driverEarningsAOA;     // 85%
+  final String merchantTransactionID; // Idempotente
+}`
   }
 ];
 

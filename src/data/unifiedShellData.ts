@@ -102,7 +102,8 @@ export const PRESET_IDENTITIES: UserIdentityProfile[] = [
     phoneMasked: '+244 9** *** ***',
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
     defaultPermissions: [],
-    description: 'Sessão inicial anônima do Shell antes do login ou discovery.'
+    description: 'Sessão inicial anônima do Shell antes do login ou discovery.',
+    sessionEpoch: 1
   },
   {
     id: 'usr_passenger_domingos',
@@ -112,7 +113,8 @@ export const PRESET_IDENTITIES: UserIdentityProfile[] = [
     phoneMasked: '+244 923 *** 200',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
     defaultPermissions: ['trip.request', 'trip.cancel', 'wallet.read', 'wallet.write'],
-    description: 'Passageiro frequente de Luanda (Talatona / Marginal / Aeroporto).'
+    description: 'Passageiro frequente de Luanda (Talatona / Marginal / Aeroporto).',
+    sessionEpoch: 1
   },
   {
     id: 'usr_driver_manuel',
@@ -122,7 +124,8 @@ export const PRESET_IDENTITIES: UserIdentityProfile[] = [
     phoneMasked: '+244 923 *** 789',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
     defaultPermissions: ['trip.accept', 'trip.cancel', 'wallet.read', 'wallet.write'],
-    description: 'Motorista parceiro homologado (Hyundai i10 Grand, Placa LD-42-89-HZ).'
+    description: 'Motorista parceiro homologado (Hyundai i10 Grand, Placa LD-42-89-HZ).',
+    sessionEpoch: 1
   },
   {
     id: 'usr_ops_claudia',
@@ -132,7 +135,8 @@ export const PRESET_IDENTITIES: UserIdentityProfile[] = [
     phoneMasked: '+244 912 *** 554',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop',
     defaultPermissions: ['driver.manage', 'user.manage', 'system.logs'],
-    description: 'Operadora da Central de Despacho e Suporte a Motoristas.'
+    description: 'Operadora da Central de Despacho e Suporte a Motoristas.',
+    sessionEpoch: 1
   },
   {
     id: 'usr_admin_kizua',
@@ -142,7 +146,8 @@ export const PRESET_IDENTITIES: UserIdentityProfile[] = [
     phoneMasked: '+244 944 *** 112',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
     defaultPermissions: ['driver.manage', 'user.manage', 'finance.read', 'finance.write', 'system.logs', 'system.audit', 'system.config'],
-    description: 'Administrador de Operações e Finanças do GO.BRO.AAO.'
+    description: 'Administrador de Operações e Finanças do GO.BRO.AAO.',
+    sessionEpoch: 1
   }
 ];
 

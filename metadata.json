@@ -1,6 +1,6 @@
 {
   "name": "Go.Bro.Aao Architecture & Platform System",
-  "description": "Sistema Operacional e Console Arquitetural Oficial da Plataforma Go.Bro.Aao (Angola Mobility) com V2 Unified Shell, Permission Engine baseado em capacidades, simulador dual Flutter, motor de matching geohash e Bootstrap Vault.",
+  "description": "Sistema Operacional e Console Arquitetural Oficial da Plataforma RIDING.ao (Angola Mobility) com V2 Unified Shell, Permission Engine baseado em capacidades, simulador dual Flutter, motor de matching geohash e Bootstrap Vault.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
