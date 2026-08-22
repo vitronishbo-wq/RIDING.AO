@@ -3,7 +3,6 @@ import {
   DynamicPricingConfig,
   HabitRoutine,
   KnownEntity,
-  ManagedUserCredential,
   UrbanAnchor
 } from '../types/intentTypes';
 
@@ -322,44 +321,5 @@ export const DEFAULT_DYNAMIC_PRICING: DynamicPricingConfig = {
   dynamicMultiplier: 1.0
 };
 
-export const INITIAL_MANAGED_CREDENTIALS: ManagedUserCredential[] = [
-  {
-    id: 'drv_manuel_01',
-    name: 'Manuel Sebastião',
-    role: 'DRIVER',
-    pin: '135790',
-    phone: '+244 923 456 789',
-    status: 'active',
-    vehiclePlate: 'LD-42-89-HZ',
-    updatedAt: '2026-08-20 10:30'
-  },
-  {
-    id: 'drv_antonio_02',
-    name: 'António Kiala',
-    role: 'DRIVER',
-    pin: '246800',
-    phone: '+244 923 888 111',
-    status: 'active',
-    vehiclePlate: 'LD-19-44-AB',
-    updatedAt: '2026-08-20 09:15'
-  },
-  {
-    id: 'drv_esmeralda_03',
-    name: 'Esmeralda Luísa',
-    role: 'DRIVER',
-    pin: '554433',
-    phone: '+244 923 777 333',
-    status: 'active',
-    vehiclePlate: 'LD-77-31-XP',
-    updatedAt: '2026-08-19 18:00'
-  },
-  {
-    id: 'adm_kizua_01',
-    name: 'Kizua Muanza (Superadmin)',
-    role: 'OPS_ADMIN',
-    pin: '7668',
-    phone: '+244 912 000 001',
-    status: 'active',
-    updatedAt: '2026-08-20 08:00'
-  }
-];
+// Single source of truth for seeded credentials (PINs come from the Bootstrap Vault).
+export { INITIAL_MANAGED_CREDENTIALS } from './contextMemoryData';

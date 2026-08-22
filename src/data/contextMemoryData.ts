@@ -1,3 +1,4 @@
+import { DEMO_CREDENTIAL_PINS } from '../config/accessConfig';
 import { LuandaLocation } from '../types/architecture';
 import {
   DynamicPricingConfig,
@@ -173,12 +174,14 @@ export const DEFAULT_DYNAMIC_PRICING: DynamicPricingConfig = {
   peakMultiplier: 1.0
 };
 
+// PINs are never stored in source: they are injected via the Bootstrap Vault
+// (VITE_DEMO_CREDENTIAL_PINS). Credentials without an injected PIN cannot authenticate.
 export const INITIAL_MANAGED_CREDENTIALS: ManagedUserCredential[] = [
   {
     id: 'drv_manuel_01',
     name: 'Manuel Sebastião',
     role: 'DRIVER',
-    pin: '135790',
+    pin: DEMO_CREDENTIAL_PINS['drv_manuel_01'] || '',
     phone: '+244 923 456 789',
     status: 'active',
     vehiclePlate: 'LD-42-89-HZ',
@@ -188,7 +191,7 @@ export const INITIAL_MANAGED_CREDENTIALS: ManagedUserCredential[] = [
     id: 'drv_antonio_02',
     name: 'António Kiala',
     role: 'DRIVER',
-    pin: '246800',
+    pin: DEMO_CREDENTIAL_PINS['drv_antonio_02'] || '',
     phone: '+244 923 888 111',
     status: 'active',
     vehiclePlate: 'LD-19-44-AB',
@@ -198,7 +201,7 @@ export const INITIAL_MANAGED_CREDENTIALS: ManagedUserCredential[] = [
     id: 'drv_esmeralda_03',
     name: 'Esmeralda Luísa',
     role: 'DRIVER',
-    pin: '554433',
+    pin: DEMO_CREDENTIAL_PINS['drv_esmeralda_03'] || '',
     phone: '+244 923 777 333',
     status: 'active',
     vehiclePlate: 'LD-77-31-XP',
@@ -208,7 +211,7 @@ export const INITIAL_MANAGED_CREDENTIALS: ManagedUserCredential[] = [
     id: 'adm_kizua_01',
     name: 'Kizua Muanza (Superadmin)',
     role: 'OPS_ADMIN',
-    pin: '7668',
+    pin: DEMO_CREDENTIAL_PINS['adm_kizua_01'] || '',
     phone: '+244 912 000 001',
     status: 'active',
     updatedAt: '2026-08-20 08:00'

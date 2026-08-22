@@ -42,6 +42,17 @@ import {
   INITIAL_MANAGED_CREDENTIALS
 } from '../data/contextMemoryData';
 import { PRESET_IDENTITIES } from '../data/unifiedShellData';
+import {
+  AUTH_LOCKOUT_MS,
+  BREAKGLASS_SHARE_FRAGMENTS,
+  DEV_ESCALATION_ENABLED,
+  DRIVER_TRIGGER_CODES,
+  FOUNDER_CHALLENGE_CODE,
+  MASTER_TRIGGER_CODE,
+  MAX_AUTH_ATTEMPTS,
+  matchesAny,
+  secretsMatch
+} from '../config/accessConfig';
 import { calculateDriverScore, calculateHaversineDistanceKm } from '../utils/geohashUtils';
 import {
   computeDeadReckoningPosition,
@@ -81,7 +92,11 @@ interface SystemContextType {
   masterAuthModalOpen: boolean;
   setMasterAuthModalOpen: (open: boolean) => void;
   submitDialpadCode: (code: string) => boolean;
-  authenticateMaster: (method?: 'firebase_auth' | 'biometric') => boolean;
+  authenticateMaster: (
+    challengeResponse: string,
+    method?: 'firebase_auth' | 'biometric'
+  ) => { success: boolean; error?: string };
+  devEscalationEnabled: boolean;
   authenticateDriver: (pin: string, useBiometrics?: boolean) => { success: boolean; error?: string };
   lockAndReturnToPublic: () => void;
   // V2 Shell & Capability State
@@ -202,6 +217,28 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [triggerDialpadOpen, setTriggerDialpadOpen] = useState<boolean>(false);
   const [driverAuthModalOpen, setDriverAuthModalOpen] = useState<boolean>(false);
   const [masterAuthModalOpen, setMasterAuthModalOpen] = useState<boolean>(false);
+
+  // Failed authentication attempts per surface (brute-force throttling)
+  type AuthSurface = 'driver' | 'master' | 'breakglass';
+  const [authAttempts, setAuthAttempts] = useState<Record<AuthSurface, number>>({
+    driver: 0,
+    master: 0,
+    breakglass: 0
+  });
+
+  const resetFailedAttempts = (surface: AuthSurface) => {
+    setAuthAttempts((prev) => ({ ...prev, [surface]: 0 }));
+  };
+
+  const registerFailedAttempt = (surface: AuthSurface) => {
+    setAuthAttempts((prev) => {
+      const next = prev[surface] + 1;
+      if (next >= MAX_AUTH_ATTEMPTS) {
+        setTimeout(() => resetFailedAttempts(surface), AUTH_LOCKOUT_MS);
+      }
+      return { ...prev, [surface]: next };
+    });
+  };
 
   // Essential 7 Firestore Collections (Chapter 4.6 & 4.7)
   const [firestoreCore, setFirestoreCore] = useState<FirestoreEssentialCore>({
@@ -375,13 +412,28 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return { success: false, message: 'As chaves apresentadas devem ser fragmentos distintos (Ex: Founder + Ops).' };
     }
 
-    // Valid Shamir shares format verification
-    const isValidKey1 = clean1.length >= 8;
-    const isValidKey2 = clean2.length >= 8;
-
-    if (!isValidKey1 || !isValidKey2) {
-      return { success: false, message: 'Fragmento criptográfico inválido. Mínimo 8 caracteres hexadecimais.' };
+    if (BREAKGLASS_SHARE_FRAGMENTS.length < 2) {
+      return {
+        success: false,
+        message: 'Fragmentos Shamir não provisionados no Bootstrap Vault. Break-Glass indisponível.'
+      };
     }
+
+    if (authAttempts.breakglass >= MAX_AUTH_ATTEMPTS) {
+      return { success: false, message: 'Demasiadas tentativas de Break-Glass. Sessão temporariamente bloqueada.' };
+    }
+
+    // Both fragments must match provisioned shares (2-of-3 threshold)
+    if (!matchesAny(clean1, BREAKGLASS_SHARE_FRAGMENTS) || !matchesAny(clean2, BREAKGLASS_SHARE_FRAGMENTS)) {
+      registerFailedAttempt('breakglass');
+      emitAnalyticsEvent('privilege_escalated', {
+        action: 'shamir_breakglass_rejected',
+        requiredThreshold: '2_OF_3'
+      });
+      return { success: false, message: 'Fragmento criptográfico inválido ou não reconhecido.' };
+    }
+
+    resetFailedAttempts('breakglass');
 
     // Execute Break-Glass session escalation
     escalatePrivileges('shamir_2_of_3_breakglass');
@@ -1287,19 +1339,18 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const submitDialpadCode = (code: string): boolean => {
     const clean = code.trim();
-    // Master trigger code (*#7668#)
-    if (clean === '*#7668#') {
+    // Master discovery trigger (injected via Bootstrap Vault, never hardcoded)
+    if (secretsMatch(clean, MASTER_TRIGGER_CODE)) {
       setTriggerDialpadOpen(false);
       setMasterAuthModalOpen(true);
       emitAnalyticsEvent('app_opened', {
         action: 'master_discovery_trigger_entered',
-        codeTrigger: '*#7668#',
         status: 'prompting_firebase_auth_challenge'
       });
       return true;
     }
-    // Driver direct entry or driver code (*#1357# or 135790)
-    if (clean === '*#1357#' || clean === '135790') {
+    // Driver discovery trigger(s)
+    if (matchesAny(clean, DRIVER_TRIGGER_CODES)) {
       setTriggerDialpadOpen(false);
       setDriverAuthModalOpen(true);
       return true;
@@ -1307,8 +1358,33 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return false;
   };
 
-  const authenticateMaster = (method: 'firebase_auth' | 'biometric' = 'firebase_auth'): boolean => {
-    // Authenticate through simulated Firebase Auth + Role verification
+  const authenticateMaster = (
+    challengeResponse: string,
+    method: 'firebase_auth' | 'biometric' = 'firebase_auth'
+  ): { success: boolean; error?: string } => {
+    // A Founder challenge secret must be provisioned; without it no client-side
+    // path may grant MASTER (final authority remains Firestore Security Rules).
+    if (!FOUNDER_CHALLENGE_CODE) {
+      return {
+        success: false,
+        error: 'Desafio do Fundador não provisionado no Bootstrap Vault. Acesso Master indisponível.'
+      };
+    }
+
+    if (authAttempts.master >= MAX_AUTH_ATTEMPTS) {
+      return { success: false, error: 'Demasiadas tentativas. Aguarde antes de tentar novamente.' };
+    }
+
+    if (!secretsMatch(challengeResponse, FOUNDER_CHALLENGE_CODE)) {
+      registerFailedAttempt('master');
+      emitAnalyticsEvent('app_opened', {
+        action: 'master_auth_challenge_failed',
+        method
+      });
+      return { success: false, error: 'Desafio de Fundador inválido.' };
+    }
+
+    resetFailedAttempts('master');
     setPrimaryState('MASTER');
     setSecondaryState('AUTHENTICATED');
     setUserRole('MASTER');
@@ -1327,16 +1403,28 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       roleVerified: 'FOUNDER_OPERATIONS',
       mode: '3_SMARTPHONES_ECOSYSTEM'
     });
-    return true;
+    return { success: true };
   };
 
   const authenticateDriver = (pin: string, useBiometrics: boolean = false): { success: boolean; error?: string } => {
-    // Find driver matching PIN or biometric default (Manuel)
+    if (authAttempts.driver >= MAX_AUTH_ATTEMPTS) {
+      return { success: false, error: 'Demasiadas tentativas. Aguarde antes de tentar novamente.' };
+    }
+
+    // The biometric shortcut bypasses the PIN entirely: demo/dev builds only.
+    if (useBiometrics && !DEV_ESCALATION_ENABLED) {
+      return { success: false, error: 'Biometria disponível apenas no build de demonstração.' };
+    }
+
+    const submittedPin = pin.trim();
     const matchingDriverCred = useBiometrics
       ? managedCredentials.find((c) => c.role === 'DRIVER' && c.id === 'drv_manuel_01')
-      : managedCredentials.find((c) => c.role === 'DRIVER' && c.pin === pin.trim());
+      : managedCredentials.find(
+          (c) => c.role === 'DRIVER' && c.pin.length > 0 && secretsMatch(submittedPin, c.pin)
+        );
 
     if (!matchingDriverCred) {
+      registerFailedAttempt('driver');
       return { success: false, error: 'Credencial não reconhecida.' };
     }
 
@@ -1355,6 +1443,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setActivePermissions(driverIdentity.defaultPermissions);
     setShellMode('driver_view');
     setDriverAuthModalOpen(false);
+    resetFailedAttempts('driver');
 
     emitAnalyticsEvent('app_opened', {
       action: 'driver_authenticated',
@@ -1441,6 +1530,17 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const escalatePrivileges = (method: PrivilegeEscalationState['method']) => {
+    // Debug/dev entry points must never grant privileges in a production build.
+    const isDevOnlyMethod = method === 'debug_sequence' || method === 'dev_token' || method === 'nfc_key';
+    if (isDevOnlyMethod && !DEV_ESCALATION_ENABLED) {
+      emitAnalyticsEvent('privilege_escalated', {
+        method,
+        grant: 'DENIED',
+        reason: 'dev_escalation_disabled'
+      });
+      return;
+    }
+
     const auditId = `audit_esc_${Date.now()}`;
     const totalTimeout = 60; // 60 seconds of temporary elevated session
 
@@ -1568,6 +1668,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setMasterAuthModalOpen,
         submitDialpadCode,
         authenticateMaster,
+        devEscalationEnabled: DEV_ESCALATION_ENABLED,
         authenticateDriver,
         lockAndReturnToPublic,
         currentIdentity,

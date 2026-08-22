@@ -404,7 +404,8 @@ export const FounderOpsApp: React.FC = () => {
                       {editingPinId === cred.id ? (
                         <div className="flex items-center gap-1">
                           <input
-                            type="text"
+                            type="password"
+                            autoComplete="off"
                             maxLength={6}
                             value={newPinValue}
                             onChange={(e) => setNewPinValue(e.target.value)}
@@ -420,11 +421,13 @@ export const FounderOpsApp: React.FC = () => {
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-[#FFC107]">{cred.pin}</span>
+                          <span className="font-bold text-[#FFC107]">
+                            {cred.pin ? '•'.repeat(cred.pin.length) : 'NÃO DEFINIDO'}
+                          </span>
                           <button
                             onClick={() => {
                               setEditingPinId(cred.id);
-                              setNewPinValue(cred.pin);
+                              setNewPinValue('');
                             }}
                             className="text-neutral-400 hover:text-white p-0.5"
                             title="Alterar PIN"
