@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useSystem } from '../../context/SystemContext';
+import { SegmentedTabs, SegmentedTabItem } from '../common/SegmentedTabs';
 import {
   Database,
   Zap,
@@ -17,7 +19,11 @@ export const SchemaInspector: React.FC = () => {
   const [activeEngine, setActiveEngine] = useState<'firestore' | 'postgres'>('firestore');
   const [selectedCollection, setSelectedCollection] = useState<string>('drivers_online');
   const [selectedTable, setSelectedTable] = useState<string>('trips');
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const { copiedKey, copyToClipboard } = useCopyToClipboard<string>();
+  const engineTabs: SegmentedTabItem<'firestore' | 'postgres'>[] = [
+    { id: 'firestore', label: <span>Firebase Firestore (5)</span>, icon: Zap, iconClassName: 'w-4 h-4 text-[#FFC107]' },
+    { id: 'postgres', label: <span>PostgreSQL SQL (6)</span>, icon: Table, iconClassName: 'w-4 h-4 text-blue-400' }
+  ];
 
   const firestoreCollectionsList = [
     { name: 'drivers_online', desc: 'Status e geohash atual do motorista' },
@@ -36,12 +42,6 @@ export const SchemaInspector: React.FC = () => {
     { name: 'ratings', desc: 'Avaliações de 1 a 5 estrelas e feedbacks' },
     { name: 'riding_ledger_entries', desc: 'Partida dobrada imutável e split 85/15 soberano' }
   ];
-
-  const copyToClipboard = (key: string, content: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
-  };
 
   return (
     <div className="space-y-6">
@@ -63,31 +63,15 @@ export const SchemaInspector: React.FC = () => {
           </div>
 
           {/* Engine Toggle */}
-          <div className="flex bg-neutral-950 p-1.5 rounded-2xl border border-neutral-800 text-xs">
-            <button
-              onClick={() => setActiveEngine('firestore')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all ${
-                activeEngine === 'firestore'
-                  ? 'bg-[#005A2B] text-white shadow-sm'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <Zap className="w-4 h-4 text-[#FFC107]" />
-              <span>Firebase Firestore (5)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveEngine('postgres')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all ${
-                activeEngine === 'postgres'
-                  ? 'bg-[#005A2B] text-white shadow-sm'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <Table className="w-4 h-4 text-blue-400" />
-              <span>PostgreSQL SQL (6)</span>
-            </button>
-          </div>
+          <SegmentedTabs
+            items={engineTabs}
+            value={activeEngine}
+            onChange={setActiveEngine}
+            containerClassName="flex bg-neutral-950 p-1.5 rounded-2xl border border-neutral-800 text-xs"
+            buttonClassName="flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all"
+            activeClassName="bg-[#005A2B] text-white shadow-sm"
+            inactiveClassName="text-neutral-400 hover:text-white"
+          />
         </div>
       </div>
 

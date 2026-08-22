@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
-import { formatAOA } from '../../utils/geohashUtils';
+import { formatAOA } from '../../utils/pricing';
+import { SegmentedTabs, SegmentedTabItem } from '../common/SegmentedTabs';
 import {
   Activity,
   Radio,
@@ -57,6 +58,14 @@ export const FounderOpsApp: React.FC = () => {
   const [editingPinId, setEditingPinId] = useState<string | null>(null);
   const [newPinValue, setNewPinValue] = useState<string>('');
   const [reconcileSuccess, setReconcileSuccess] = useState<string | null>(null);
+  const tabs: SegmentedTabItem<'dispatch' | 'pricing' | 'credentials' | 'finance' | 'reconciliation' | 'ledger'>[] = [
+    { id: 'dispatch', label: 'Despacho' },
+    { id: 'pricing', label: 'Tarifas (Kz)' },
+    { id: 'credentials', label: 'Credenciais' },
+    { id: 'finance', label: 'Faturamento' },
+    { id: 'reconciliation', label: 'Conciliação (Dinheiro)' },
+    { id: 'ledger', label: 'Livro-Razão & AppyPay' }
+  ];
 
   const onlineDriversCount = drivers.filter((d) => d.status !== 'offline').length;
   const totalFleetBalanceAOA = drivers.reduce((acc, d) => acc + d.walletBalanceAOA, 0);
@@ -117,56 +126,15 @@ export const FounderOpsApp: React.FC = () => {
       </div>
 
       {/* Ops Navigation Tabs */}
-      <div className="bg-neutral-900 px-2 py-1.5 border-b border-neutral-800 flex items-center justify-between text-[10px] font-semibold shrink-0 gap-1 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('dispatch')}
-          className={`px-2 py-1 rounded-lg transition-colors shrink-0 ${
-            activeTab === 'dispatch' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          Despacho
-        </button>
-        <button
-          onClick={() => setActiveTab('pricing')}
-          className={`px-2 py-1 rounded-lg transition-colors shrink-0 ${
-            activeTab === 'pricing' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          Tarifas (Kz)
-        </button>
-        <button
-          onClick={() => setActiveTab('credentials')}
-          className={`px-2 py-1 rounded-lg transition-colors shrink-0 ${
-            activeTab === 'credentials' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          Credenciais
-        </button>
-        <button
-          onClick={() => setActiveTab('finance')}
-          className={`px-2 py-1 rounded-lg transition-colors shrink-0 ${
-            activeTab === 'finance' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          Faturamento
-        </button>
-        <button
-          onClick={() => setActiveTab('reconciliation')}
-          className={`px-2 py-1 rounded-lg transition-colors shrink-0 ${
-            activeTab === 'reconciliation' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          Conciliação (Dinheiro)
-        </button>
-        <button
-          onClick={() => setActiveTab('ledger')}
-          className={`px-2 py-1 rounded-lg transition-colors shrink-0 ${
-            activeTab === 'ledger' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          Livro-Razão & AppyPay
-        </button>
-      </div>
+      <SegmentedTabs
+        items={tabs}
+        value={activeTab}
+        onChange={setActiveTab}
+        containerClassName="bg-neutral-900 px-2 py-1.5 border-b border-neutral-800 flex items-center justify-between text-[10px] font-semibold shrink-0 gap-1 overflow-x-auto"
+        buttonClassName="px-2 py-1 rounded-lg transition-colors shrink-0"
+        activeClassName="bg-[#005A2B] text-white"
+        inactiveClassName="text-neutral-400 hover:text-neutral-200"
+      />
 
       {/* Main Ops Content */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-3 bg-neutral-900 text-neutral-100 text-xs">

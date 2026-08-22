@@ -42,21 +42,17 @@ import {
   INITIAL_MANAGED_CREDENTIALS
 } from '../data/contextMemoryData';
 import { PRESET_IDENTITIES } from '../data/unifiedShellData';
-import { calculateDriverScore, calculateHaversineDistanceKm } from '../utils/geohashUtils';
+import { calculateHaversineDistanceKm } from '../utils/geohashUtils';
 import {
   computeDeadReckoningPosition,
   DEAD_RECKONING_LIMITS,
   validateGnssTelemetryPoint
 } from '../utils/adaptiveGps';
 import { financialLedgerEngine } from '../utils/financialLedgerEngine';
-
-interface MatchingCandidate {
-  driver: DriverState;
-  distanceKm: number;
-  etaMins: number;
-  score: number;
-  breakdown: Record<string, number>;
-}
+import { floorFare, MIN_FARE_AOA } from '../utils/pricing';
+import { generateRandomId } from '../utils/id';
+import { MatchingCandidate, rankDriverCandidates } from '../utils/matching';
+import { createPaymentChain } from '../utils/payment';
 
 interface SystemContextType {
   activeTab: 'shell' | 'simulator' | 'constitution' | 'matching' | 'topology' | 'database' | 'api' | 'design' | 'analytics' | 'finance';
@@ -311,7 +307,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     eventType: RidingPaymentEvent['eventType'];
     rawPayload?: Record<string, any>;
   }) => {
-    const eventId = params.eventId || `wh_ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const eventId = params.eventId || generateRandomId('wh_ev', 4);
     const result = financialLedgerEngine.ingestPaymentEvent({
       eventId,
       merchantTransactionID: params.merchantTransactionID,
@@ -663,48 +659,19 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const tripId = `trip_${Date.now().toString().slice(-6)}`;
 
     // Matching Engine in-memory calculation (Stateless, SLA < 100ms)
-    const startMatchTime = performance.now();
-
-    const candidates: MatchingCandidate[] = drivers
-      .filter((d) => d.status === 'online')
-      .map((d) => {
-        const dDist = calculateHaversineDistanceKm(selectedOrigin.lat, selectedOrigin.lng, d.lat, d.lng);
-        const dEta = Math.round(dDist * 2.5 + 2);
-        const scoreResult = calculateDriverScore({
-          distanceKm: dDist,
-          driverRating: d.rating,
-          etaMinutes: dEta,
-          speedKmH: d.speedKmH
-        });
-        return {
-          driver: d,
-          distanceKm: dDist,
-          etaMins: dEta,
-          score: scoreResult.score,
-          breakdown: scoreResult.weights
-        };
-      })
-      .sort((a, b) => b.score - a.score);
-
-    const matchDuration = Number((performance.now() - startMatchTime + 18).toFixed(1));
-    setLastMatchingLatencyMs(matchDuration);
-    setCurrentCandidates(candidates);
+    const ranking = rankDriverCandidates(drivers, selectedOrigin);
+    setLastMatchingLatencyMs(ranking.latencyMs);
+    setCurrentCandidates(ranking.candidates);
 
     // [Regra Interna RIDING.ao] - Backend Authority Validation: Garantir piso mínimo de 500 AOA
-    const officialAmountAOA = Math.max(500, Math.round(priceAOA));
+    const officialAmountAOA = floorFare(priceAOA);
 
     // Passo 1 & 2 da Cadeia: RIDE -> PAYMENT_INTENT -> PAYMENT_TRANSACTION
-    const intent = financialLedgerEngine.createPaymentIntent({
+    const { intent, transaction: tx } = createPaymentChain(financialLedgerEngine, {
       rideId: tripId,
       idempotencyKey: `idemp_intent_${tripId}`,
       officialAmountAOA,
-      paymentMethod,
-      passengerId: 'usr_p1'
-    });
-
-    const tx = financialLedgerEngine.createPaymentTransaction({
-      paymentIntentId: intent.id,
-      phoneNumber: '+244 923 100 200'
+      paymentMethod
     });
 
     setFinancialIntents([...financialLedgerEngine.getAllIntents()]);
@@ -727,7 +694,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       paymentIntentId: intent.id,
       paymentTransactionId: tx.id,
       merchantTransactionID: tx.merchantTransactionID,
-      matchingDurationMs: matchDuration,
+      matchingDurationMs: ranking.latencyMs,
       requestedAt: Date.now(),
       routeCoordinates: [
         [selectedOrigin.lat, selectedOrigin.lng],
@@ -763,8 +730,8 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       category: selectedCategory.id,
       distanceKm,
       priceAOA,
-      candidatesCount: candidates.length,
-      matchingLatencyMs: matchDuration
+      candidatesCount: ranking.candidates.length,
+      matchingLatencyMs: ranking.latencyMs
     });
 
     // Send invite to top driver (Manuel Sebastião)
@@ -779,58 +746,29 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     paymentTier: 'TIER_1_INVISIBLE' | 'TIER_2_REFERENCE' | 'TIER_3_MANUAL' = 'TIER_1_INVISIBLE'
   ) => {
     const tripId = `trip_${Date.now().toString().slice(-6)}`;
-    const startMatchTime = performance.now();
-
-    const candidates: MatchingCandidate[] = drivers
-      .filter((d) => d.status === 'online')
-      .map((d) => {
-        const dDist = calculateHaversineDistanceKm(plan.pickupLocation.lat, plan.pickupLocation.lng, d.lat, d.lng);
-        const dEta = Math.max(2, Math.round(dDist * 2.5 + 2));
-        const scoreResult = calculateDriverScore({
-          distanceKm: dDist,
-          driverRating: d.rating,
-          etaMinutes: dEta,
-          speedKmH: d.speedKmH
-        });
-        return {
-          driver: d,
-          distanceKm: dDist,
-          etaMins: dEta,
-          score: scoreResult.score,
-          breakdown: scoreResult.weights
-        };
-      })
-      .sort((a, b) => b.score - a.score);
-
-    const matchDuration = Number((performance.now() - startMatchTime + 18).toFixed(1));
-    setLastMatchingLatencyMs(matchDuration);
-    setCurrentCandidates(candidates);
+    const ranking = rankDriverCandidates(drivers, plan.pickupLocation, 2);
+    setLastMatchingLatencyMs(ranking.latencyMs);
+    setCurrentCandidates(ranking.candidates);
 
     setSelectedOrigin(plan.pickupLocation);
     setSelectedDestination(plan.dropoffLocation);
 
     // [Regra Interna RIDING.ao] - Backend Authority Validation: Tarifação e Cadeia Financeira
-    const officialPriceAOA = Math.max(500, Math.round(plan.calculatedPriceAOA));
+    const officialPriceAOA = floorFare(plan.calculatedPriceAOA);
 
     // Passo 1 & 2 da Cadeia: RIDE -> PAYMENT_INTENT -> PAYMENT_TRANSACTION
-    const intent = financialLedgerEngine.createPaymentIntent({
+    const { intent, transaction: tx } = createPaymentChain(financialLedgerEngine, {
       rideId: tripId,
       idempotencyKey: `idemp_intent_${tripId}`,
       officialAmountAOA: officialPriceAOA,
-      paymentMethod,
-      passengerId: 'usr_p1'
-    });
-
-    const tx = financialLedgerEngine.createPaymentTransaction({
-      paymentIntentId: intent.id,
-      phoneNumber: '+244 923 100 200'
+      paymentMethod
     });
 
     setFinancialIntents([...financialLedgerEngine.getAllIntents()]);
     setFinancialTransactions([...financialLedgerEngine.getAllTransactions()]);
 
     // Multicaixa Reference generator for Tier 2 or Reference payment
-    const driverPhone = candidates[0]?.driver?.phone || '+244 923 456 789';
+    const driverPhone = ranking.candidates[0]?.driver?.phone || '+244 923 456 789';
     const phoneClean = driverPhone.replace(/\D/g, '').slice(-4);
     const tripNum = tripId.replace(/\D/g, '').slice(-5) || '10293';
     const refNum = `${phoneClean}${tripNum}`.padEnd(9, '7');
@@ -840,7 +778,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       referencia: tx.referenceData?.reference || `${refNum.slice(0, 3)} ${refNum.slice(3, 6)} ${refNum.slice(6, 9)}`,
       valorAOA: officialPriceAOA,
       driverPhone,
-      driverName: candidates[0]?.driver?.name || 'Manuel Sebastião'
+      driverName: ranking.candidates[0]?.driver?.name || 'Manuel Sebastião'
     };
 
     const newTrip: ActiveTrip = {
@@ -864,7 +802,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       merchantTransactionID: tx.merchantTransactionID,
       isDestinoVivo: plan.isDestinoVivo,
       entityName: plan.entity?.name,
-      matchingDurationMs: matchDuration,
+      matchingDurationMs: ranking.latencyMs,
       requestedAt: Date.now(),
       routeCoordinates: [
         [plan.pickupLocation.lat, plan.pickupLocation.lng],
@@ -900,8 +838,8 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       distanceKm: plan.distanceKm,
       priceAOA: plan.calculatedPriceAOA,
       paymentTier,
-      candidatesCount: candidates.length,
-      matchingLatencyMs: matchDuration
+      candidatesCount: ranking.candidates.length,
+      matchingLatencyMs: ranking.latencyMs
     });
 
     setDriverInviteActive(true);
@@ -1077,9 +1015,9 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // 1. Central Server Authority Validation of Trajectory & Odometry
     // Enforce 500 Kz minimum floor & validate distance sanity
     const officialDistanceKm = Math.max(1.0, activeTrip.distanceKm);
-    const calculatedBase = 500 + officialDistanceKm * pricingConfig.perKmPriceAOA * activeTrip.category.multiplier;
-    const officialPriceAOA = Math.max(500, Math.round(calculatedBase));
-    const isFloorEnforced = officialPriceAOA <= 500;
+    const calculatedBase = MIN_FARE_AOA + officialDistanceKm * pricingConfig.perKmPriceAOA * activeTrip.category.multiplier;
+    const officialPriceAOA = floorFare(calculatedBase);
+    const isFloorEnforced = officialPriceAOA <= MIN_FARE_AOA;
 
     const platformFeeRate = 0.15; // 15% platform fee
     const platformFeeAOA = Math.round(officialPriceAOA * platformFeeRate);
@@ -1141,7 +1079,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const merchantTxId = activeTrip.merchantTransactionID || `MTX_RIDING_${activeTrip.id}_${now.toString().slice(-6)}`;
 
     financialLedgerEngine.ingestPaymentEvent({
-      eventId: `ev_${now}_${Math.random().toString(36).substring(2, 6)}`,
+      eventId: generateRandomId('ev', 4, false, now),
       merchantTransactionID: merchantTxId,
       providerTransactionId: activeTrip.paymentMethod === 'MULTICAIXA_EXPRESS' ? `APPY_GPO_${now}` : undefined,
       eventType,

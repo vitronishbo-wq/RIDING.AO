@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
-import { Car, Fingerprint, Lock, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Car, Fingerprint, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ModalShell } from '../common/ModalShell';
 
 export const DriverAuthModal: React.FC = () => {
   const { driverAuthModalOpen, setDriverAuthModalOpen, authenticateDriver } = useSystem();
@@ -37,33 +38,22 @@ export const DriverAuthModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-white">
-        {/* Modal Header */}
-        <div className="bg-neutral-950 px-5 py-4 border-b border-neutral-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#005A2B] border border-emerald-500/40 flex items-center justify-center text-[#FFC107]">
-              <Car className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">Portal do Motorista</h3>
-              <p className="text-[11px] text-neutral-400">Autenticação de Parceiro</p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              setDriverAuthModalOpen(false);
-              setPin('');
-              setErrorMessage(null);
-            }}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <ModalShell
+      icon={
+        <div className="w-8 h-8 rounded-xl bg-[#005A2B] border border-emerald-500/40 flex items-center justify-center text-[#FFC107]">
+          <Car className="w-4 h-4" />
         </div>
-
-        {/* Form Body */}
-        <div className="p-5 space-y-4">
+      }
+      title="Portal do Motorista"
+      subtitle="Autenticação de Parceiro"
+      onClose={() => {
+        setDriverAuthModalOpen(false);
+        setPin('');
+        setErrorMessage(null);
+      }}
+      panelClassName="bg-neutral-900 border border-neutral-800 rounded-3xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-white"
+      contentClassName="p-5 space-y-4"
+    >
           <form onSubmit={handlePinSubmit} className="space-y-3">
             <div>
               <label className="block text-[11px] text-neutral-300 font-medium mb-1.5">
@@ -117,8 +107,6 @@ export const DriverAuthModal: React.FC = () => {
               <span>Face ID / Impressão Digital</span>
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

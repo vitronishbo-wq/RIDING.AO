@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
-import { Delete, X, ShieldAlert, KeyRound } from 'lucide-react';
+import { Delete, ShieldAlert, KeyRound } from 'lucide-react';
+import { ModalShell } from '../common/ModalShell';
 
 export const SecretDialpadModal: React.FC = () => {
   const { triggerDialpadOpen, setTriggerDialpadOpen, submitDialpadCode } = useSystem();
@@ -59,32 +60,21 @@ export const SecretDialpadModal: React.FC = () => {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        {/* Modal Header */}
-        <div className="bg-neutral-950 px-5 py-4 border-b border-neutral-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center text-amber-400">
-              <KeyRound className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">Terminal do Dispositivo</h3>
-              <p className="text-[11px] text-neutral-400">Teclado de Acesso</p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              setTriggerDialpadOpen(false);
-              setDialedDigits('');
-              setErrorNotice(null);
-            }}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <ModalShell
+      icon={
+        <div className="w-8 h-8 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center text-amber-400">
+          <KeyRound className="w-4 h-4" />
         </div>
-
-        {/* Display Area */}
+      }
+      title="Terminal do Dispositivo"
+      subtitle="Teclado de Acesso"
+      onClose={() => {
+        setTriggerDialpadOpen(false);
+        setDialedDigits('');
+        setErrorNotice(null);
+      }}
+      contentClassName="p-0"
+    >
         <div className="p-5 bg-neutral-950/60 border-b border-neutral-800/80 text-center">
           <div className="h-12 flex items-center justify-center font-mono text-2xl tracking-widest text-emerald-400 font-bold">
             {dialedDigits ? (
@@ -138,7 +128,6 @@ export const SecretDialpadModal: React.FC = () => {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

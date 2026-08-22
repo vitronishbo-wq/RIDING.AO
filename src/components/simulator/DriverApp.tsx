@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSystem } from '../../context/SystemContext';
 import { DeviceViewportWrapper } from '../shell/DeviceViewportWrapper';
-import { formatAOA } from '../../utils/geohashUtils';
+import { formatAOA } from '../../utils/pricing';
 import { getAdaptiveGpsInterval } from '../../utils/adaptiveGps';
 import {
   Power,

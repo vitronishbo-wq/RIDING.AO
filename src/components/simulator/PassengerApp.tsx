@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSystem } from '../../context/SystemContext';
 import { DeviceViewportWrapper } from '../shell/DeviceViewportWrapper';
-import { formatAOA, calculateHaversineDistanceKm } from '../../utils/geohashUtils';
+import { calculateHaversineDistanceKm } from '../../utils/geohashUtils';
+import { formatAOA, floorFare, MIN_FARE_AOA } from '../../utils/pricing';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import {
   parseProgressiveIntent,
   getActiveHabitSuggestion,
@@ -63,7 +65,7 @@ export const PassengerApp: React.FC = () => {
   const [chosenDestination, setChosenDestination] = useState<UrbanAnchor | null>(null);
   const [chosenOrigin, setChosenOrigin] = useState<LuandaLocation | UrbanAnchor | null>(null);
   const [isListeningMic, setIsListeningMic] = useState<boolean>(false);
-  const [copiedRef, setCopiedRef] = useState<boolean>(false);
+  const { copiedKey, copyToClipboard } = useCopyToClipboard<'reference'>();
 
   // Progressive resolution state
   const [resolution, setResolution] = useState<ProgressiveResolution>(() =>
@@ -353,7 +355,7 @@ export const PassengerApp: React.FC = () => {
     const durationMin = Math.round(distKm * 2.8 + 4);
     
     // Base 500 AOA minimum floor + elastic distance growth (50 AOA / 50m = 1000 AOA / km)
-    const priceAOA = Math.max(500, Math.round(500 + Math.max(0, distKm - 0.5) * 1000));
+    const priceAOA = floorFare(MIN_FARE_AOA + Math.max(0, distKm - 0.5) * 1000);
 
     const plan: OperationalTripPlan = {
       actionTitle: `Corrida para ${destination.name}`,
@@ -443,9 +445,9 @@ export const PassengerApp: React.FC = () => {
 
   // Copy Multicaixa Reference Code
   const handleCopyReference = (ref: string) => {
-    navigator.clipboard?.writeText(ref.replace(/\s/g, ''));
-    setCopiedRef(true);
-    setTimeout(() => setCopiedRef(false), 2000);
+    copyToClipboard('reference', ref.replace(/\s/g, ''), (content) => {
+      navigator.clipboard?.writeText(content);
+    });
   };
 
   return (
@@ -941,7 +943,7 @@ export const PassengerApp: React.FC = () => {
                       className="p-0.5 text-neutral-400 hover:text-white"
                       title="Copiar Referência"
                     >
-                      {copiedRef ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      {copiedKey === 'reference' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                     </button>
                   </div>
                 </div>
