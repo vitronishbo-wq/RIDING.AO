@@ -54,25 +54,57 @@ jobs:
           test -f firestore.rules
           echo "Build artifacts verified successfully."
 
-      - name: Deploy Firebase Hosting
+      - name: Setup Firebase credentials
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          set -e
+          CREDENTIALS_PATH="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$CREDENTIALS_PATH"
+          
+          # Persiste a variável de ambiente para TODOS os passos seguintes
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$CREDENTIALS_PATH" >> $GITHUB_ENV
+
+          node -e "
+            const fs = require('fs');
+            const file = process.env.GOOGLE_APPLICATION_CREDENTIALS || '$CREDENTIALS_PATH';
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+            if (!data.project_id) throw new Error('FIREBASE_SERVICE_ACCOUNT missing project_id');
+            if (!data.client_email) throw new Error('FIREBASE_SERVICE_ACCOUNT missing client_email');
+            if (!data.private_key) throw new Error('FIREBASE_SERVICE_ACCOUNT missing private_key');
+
+            console.log('Firebase service account validated.');
+          "
+
+      - name: Install Firebase CLI
+        run: bun add --global firebase-tools
+
+      - name: Verify Firebase project access
+        env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
           set -e
+          firebase projects:list \
+            --project "$FIREBASE_PROJECT_ID" \
+            --non-interactive \
+            >/dev/null
+          echo "Firebase project access verified."
 
-          bun add --global firebase-tools
-
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" \
-            > "$RUNNER_TEMP/firebase-service-account.json"
-
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
-
+      - name: Deploy Firebase Hosting and Firestore Rules
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          set -e
           firebase deploy \
-            --only hosting \
+            --only hosting,firestore:rules \
             --project "$FIREBASE_PROJECT_ID" \
             --non-interactive
+          echo "Firebase Hosting and Firestore Rules deployed successfully."
 
+      - name: Remove Firebase credentials
+        if: always()
+        run: |
           rm -f "$RUNNER_TEMP/firebase-service-account.json"
 
       - name: Trigger Render Backend Deploy
@@ -80,15 +112,21 @@ jobs:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
           set -e
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL não configurado. Ignorando trigger do Render..."
+            exit 0
+          fi
 
-          HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+          HTTP_STATUS=$(curl -sS \
+            -o /dev/null \
+            -w "%{http_code}" \
             -X POST \
             "$RENDER_DEPLOY_HOOK_URL")
 
           echo "Render deploy hook response: HTTP $HTTP_STATUS"
 
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "Render deploy failed with HTTP $HTTP_STATUS"
+            echo "Render deployment trigger failed."
             exit 1
           fi
 
