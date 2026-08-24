@@ -1,39 +1,149 @@
-{
-  "hosting": {
-    "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      {
-        "source": "**/*.@(js|css)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|ico|woff|woff2|ttf|otf)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=86400"
-          }
-        ]
-      }
-    ]
-  },
-  "firestore": {
-    "rules": "firestore.rules"
-  }
-}
+name: RIDING.ao CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-deploy:
+    name: Build, Test & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck & Lint
+        run: bun run lint
+
+      - name: Build Vite application
+        run: bun run build
+        env:
+          NODE_ENV: production
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+
+      - name: Verify build artifacts
+        run: |
+          set -e
+
+          test -f dist/index.html
+          test -f firebase.json
+          test -f firestore.rules
+
+          echo "Build artifacts verified successfully."
+
+      - name: Setup Firebase credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          set -e
+
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" \
+            > "$RUNNER_TEMP/firebase-service-account.json"
+
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
+
+          node -e "
+            const fs = require('fs');
+            const file = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+            if (!data.project_id) {
+              throw new Error('FIREBASE_SERVICE_ACCOUNT missing project_id');
+            }
+
+            if (!data.client_email) {
+              throw new Error('FIREBASE_SERVICE_ACCOUNT missing client_email');
+            }
+
+            if (!data.private_key) {
+              throw new Error('FIREBASE_SERVICE_ACCOUNT missing private_key');
+            }
+
+            console.log('Firebase service account validated.');
+          "
+
+      - name: Install Firebase CLI
+        run: bun add --global firebase-tools
+
+      - name: Verify Firebase project access
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          set -e
+
+          firebase projects:list \
+            --project "$FIREBASE_PROJECT_ID" \
+            --non-interactive \
+            >/dev/null
+
+          echo "Firebase project access verified."
+
+      - name: Deploy Firebase Hosting and Firestore Rules
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+        run: |
+          set -e
+
+          firebase deploy \
+            --only hosting,firestore:rules \
+            --project "$FIREBASE_PROJECT_ID" \
+            --non-interactive
+
+          echo "Firebase Hosting and Firestore Rules deployed successfully."
+
+      - name: Remove Firebase credentials
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/firebase-service-account.json"
+
+      - name: Trigger Render Backend Deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          set -e
+
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL is not configured."
+            exit 1
+          fi
+
+          HTTP_STATUS=$(curl -sS \
+            -o /dev/null \
+            -w "%{http_code}" \
+            -X POST \
+            "$RENDER_DEPLOY_HOOK_URL")
+
+          echo "Render deploy hook response: HTTP $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "Render deployment trigger failed."
+            exit 1
+          fi
+
+          echo "Render deployment triggered successfully."

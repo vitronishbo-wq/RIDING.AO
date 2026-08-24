@@ -54,7 +54,7 @@ jobs:
           test -f firestore.rules
           echo "Build artifacts verified successfully."
 
-      - name: Deploy to Firebase (Hosting & Firestore Rules)
+      - name: Deploy Firebase Hosting
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -69,7 +69,7 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
 
           firebase deploy \
-            --only hosting,firestore:rules \
+            --only hosting \
             --project "$FIREBASE_PROJECT_ID" \
             --non-interactive
 
