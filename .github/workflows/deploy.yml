@@ -48,9 +48,11 @@ jobs:
 
       - name: Verify build artifacts
         run: |
+          set -e
           test -f dist/index.html
           test -f firebase.json
           test -f firestore.rules
+          echo "Build artifacts verified successfully."
 
       - name: Deploy Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -61,17 +63,36 @@ jobs:
           channelId: live
 
       - name: Deploy Firestore Rules
-        uses: w9jds/firebase-action@v13
-        with:
-          args: deploy --only firestore:rules --project ${{ secrets.FIREBASE_PROJECT_ID }}
         env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          set -e
+
+          bun add --global firebase-tools
+
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" \
+            > "$RUNNER_TEMP/firebase-service-account.json"
+
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
+
+          firebase deploy \
+            --only firestore:rules \
+            --project "$FIREBASE_PROJECT_ID"
+
+          rm -f "$RUNNER_TEMP/firebase-service-account.json"
 
       - name: Trigger Render Backend Deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
+          set -e
+
           HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
             -X POST \
-            "${{ secrets.RENDER_DEPLOY_HOOK_URL }}")
+            "$RENDER_DEPLOY_HOOK_URL")
+
+          echo "Render deploy hook response: HTTP $HTTP_STATUS"
 
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
             echo "Render deploy failed with HTTP $HTTP_STATUS"
