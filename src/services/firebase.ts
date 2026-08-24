@@ -26,11 +26,13 @@ const resolvedFirebaseConfig = {
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(resolvedFirebaseConfig);
 
-// Database ID provisioned for this applet
-export const FIRESTORE_DATABASE_ID = (defaultFirebaseConfig as Record<string, unknown>).firestoreDatabaseId as string || 'ai-studio-ridingao-75c3cebb-d091-44d7-80f5-cf313114ad76';
+// Database ID provisioned for this applet / default Firestore
+export const FIRESTORE_DATABASE_ID = (defaultFirebaseConfig as Record<string, unknown>).firestoreDatabaseId as string || '(default)';
 
-// Initialize Firestore with specific database ID (CRITICAL)
-export const db: Firestore = getFirestore(app, FIRESTORE_DATABASE_ID);
+// Initialize Firestore (handles default or named database cleanly)
+export const db: Firestore = FIRESTORE_DATABASE_ID && FIRESTORE_DATABASE_ID !== '(default)'
+  ? getFirestore(app, FIRESTORE_DATABASE_ID)
+  : getFirestore(app);
 
 // Initialize Auth
 export const auth: Auth = getAuth(app);
