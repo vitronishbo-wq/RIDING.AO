@@ -261,7 +261,7 @@ export const ApiSandbox: React.FC = () => {
             >
               {selectedApi.method}
             </span>
-            <span className="font-mono text-xs text-neutral-400">https://api.gobroaao.com</span>
+            <span className="font-mono text-xs text-neutral-400">https://vitronis.co.ao</span>
             <span className="font-mono text-xs text-[#FFC107] font-bold">
               {selectedApi.prefix}
               {selectedApi.path}

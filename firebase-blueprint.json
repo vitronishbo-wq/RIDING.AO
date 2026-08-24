@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile for passengers and system operators",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user ID" },
+        "name": { "type": "string", "description": "User full name" },
+        "phoneNumber": { "type": "string", "description": "Angolan MSISDN phone number (+244)" },
+        "role": { "type": "string", "enum": ["PASSENGER", "DRIVER", "MASTER", "FOUNDER"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "phoneNumber", "role"]
+    },
+    "Driver": {
+      "title": "Driver",
+      "description": "Driver profile and real-time operational status in Luanda",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Driver unique identifier" },
+        "name": { "type": "string", "description": "Driver name" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "vehicleModel": { "type": "string", "description": "Vehicle make/model (e.g. Toyota Hiace, Hyundai i10)" },
+        "plateNumber": { "type": "string", "description": "Luanda vehicle plate registration" },
+        "geohash": { "type": "string", "description": "Current geohash-7 location" },
+        "lat": { "type": "number", "description": "Latitude" },
+        "lng": { "type": "number", "description": "Longitude" },
+        "status": { "type": "string", "enum": ["ONLINE", "BUSY", "OFFLINE"] },
+        "rating": { "type": "number", "description": "Driver rating (1-5)" },
+        "completedTrips": { "type": "number", "description": "Total completed rides" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "Ride": {
+      "title": "Ride",
+      "description": "Operational ride document connecting passenger and driver in Luanda",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique trip ID" },
+        "passengerId": { "type": "string", "description": "Passenger UID" },
+        "passengerName": { "type": "string", "description": "Passenger name" },
+        "passengerPhone": { "type": "string", "description": "Passenger phone" },
+        "driverId": { "type": "string", "description": "Assigned driver ID" },
+        "originName": { "type": "string", "description": "Pickup anchor name" },
+        "destinationName": { "type": "string", "description": "Destination anchor name" },
+        "fareAOA": { "type": "number", "description": "Trip fare in Angolan Kwanza" },
+        "paymentMethod": { "type": "string", "enum": ["MULTICAIXA_EXPRESS", "MULTICAIXA_REFERENCE", "CASH"] },
+        "status": { "type": "string", "enum": ["REQUESTED", "ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "passengerId", "originName", "destinationName", "fareAOA", "status"]
+    },
+    "PaymentTransaction": {
+      "title": "PaymentTransaction",
+      "description": "Financial ledger record and payment intent tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Transaction identifier" },
+        "merchantTransactionID": { "type": "string", "description": "Idempotent transaction key with RIDING prefix" },
+        "paymentIntentId": { "type": "string", "description": "Associated payment intent ID" },
+        "provider": { "type": "string", "enum": ["APPYPAY_GPO", "APPYPAY_REF", "CASH_DIRECT", "INTERNAL_LEDGER"] },
+        "providerTransactionId": { "type": "string", "description": "Gateway transaction ID" },
+        "amountAOA": { "type": "number", "description": "Gross amount in AOA" },
+        "status": { "type": "string", "enum": ["Requested", "Pending", "Success", "Failed", "Expired", "Refunded"] },
+        "createdAt": { "type": "number", "description": "Timestamp epoch ms" }
+      },
+      "required": ["id", "merchantTransactionID", "amountAOA", "status"]
+    },
+    "Location": {
+      "title": "Location",
+      "description": "Luanda geographic anchor point",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Anchor ID" },
+        "name": { "type": "string", "description": "Location display name" },
+        "neighborhood": { "type": "string", "description": "Bairro / Município" },
+        "geohash": { "type": "string", "description": "Geohash 7 precision code" },
+        "lat": { "type": "number", "description": "Latitude" },
+        "lng": { "type": "number", "description": "Longitude" }
+      },
+      "required": ["id", "name", "geohash", "lat", "lng"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Sovereign platform financial policy and system config",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Setting ID" },
+        "minRideFloorAOA": { "type": "number", "description": "Piso mínimo comercial (500 AOA)" },
+        "commissionPercentage": { "type": "number", "description": "Platform commission (15%)" },
+        "driverSharePercentage": { "type": "number", "description": "Driver share (85%)" },
+        "gpoTimeoutSeconds": { "type": "number", "description": "GPO push timeout (90s)" },
+        "refExpirationHours": { "type": "number", "description": "Multicaixa reference validity (72h)" }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores passenger and operator profiles"
+    },
+    "/drivers/{driverId}": {
+      "schema": "Driver",
+      "description": "Stores driver profiles, telemetry and active status"
+    },
+    "/rides/{rideId}": {
+      "schema": "Ride",
+      "description": "Stores ride requests, status and trip details"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "PaymentTransaction",
+      "description": "Stores financial transactions and operational payment state"
+    },
+    "/locations/{locationId}": {
+      "schema": "Location",
+      "description": "Stores Luanda geohash dispatch anchors"
+    },
+    "/settings/{settingId}": {
+      "schema": "Setting",
+      "description": "Stores sovereign platform policies"
+    }
+  }
+}

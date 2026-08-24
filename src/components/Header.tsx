@@ -15,11 +15,13 @@ import {
   Layers,
   LogOut,
   UserCheck,
-  Coins
+  Coins,
+  Mail,
+  MessageSquare
 } from 'lucide-react';
 
 interface NavItem {
-  id: 'shell' | 'simulator' | 'constitution' | 'matching' | 'topology' | 'database' | 'api' | 'design' | 'analytics' | 'finance';
+  id: 'shell' | 'simulator' | 'constitution' | 'matching' | 'topology' | 'database' | 'api' | 'design' | 'analytics' | 'finance' | 'gmail' | 'chat';
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
@@ -58,6 +60,8 @@ export const Header: React.FC = () => {
     { id: 'topology', label: 'Topologia & Rede', icon: Network },
     { id: 'database', label: 'Bancos (Firestore / SQL)', icon: Database },
     { id: 'finance', label: 'Cadeia Financeira (Cap 17)', icon: Coins, badge: 'AppyPay' },
+    { id: 'gmail', label: 'Gmail & Recibos', icon: Mail, badge: 'Workspace' },
+    { id: 'chat', label: 'Google Chat & Frota', icon: MessageSquare, badge: 'Workspace' },
     { id: 'api', label: 'APIs & Payloads', icon: Terminal },
     { id: 'design', label: 'Design System', icon: Palette },
     { id: 'analytics', label: 'Eventos & Auditoria', icon: Activity }

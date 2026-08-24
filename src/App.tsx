@@ -15,6 +15,8 @@ import { MatchingEngineVisualizer } from './components/matching/MatchingEngineVi
 import { NetworkTopologyView } from './components/topology/NetworkTopologyView';
 import { SchemaInspector } from './components/database/SchemaInspector';
 import { FinancialLedgerVisualizer } from './components/finance/FinancialLedgerVisualizer';
+import { GmailWorkspacePanel } from './components/gmail/GmailWorkspacePanel';
+import { GoogleChatWorkspacePanel } from './components/chat/GoogleChatWorkspacePanel';
 import { ApiSandbox } from './components/api/ApiSandbox';
 import { DesignSystemShowcase } from './components/design/DesignSystemShowcase';
 import { AnalyticsEventStream } from './components/analytics/AnalyticsEventStream';
@@ -57,6 +59,8 @@ const AppContent: React.FC = () => {
             {activeTab === 'topology' && <NetworkTopologyView />}
             {activeTab === 'database' && <SchemaInspector />}
             {activeTab === 'finance' && <FinancialLedgerVisualizer />}
+            {activeTab === 'gmail' && <GmailWorkspacePanel />}
+            {activeTab === 'chat' && <GoogleChatWorkspacePanel />}
             {activeTab === 'api' && <ApiSandbox />}
             {activeTab === 'design' && <DesignSystemShowcase />}
             {activeTab === 'analytics' && <AnalyticsEventStream />}

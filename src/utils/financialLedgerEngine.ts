@@ -40,6 +40,7 @@ import {
   RidingPaymentProvider,
   RidingPaymentTransaction
 } from '../types/architecture';
+import { appyPayAdapter } from '../services/appypayAdapter';
 
 // =============================================================
 // 1. SECURE SERVER VAULT (Client_ID e Client_Secret ISOLADOS)
@@ -111,6 +112,17 @@ export class SovereignFinancialLedgerEngine {
     return { ...this.commercialPolicy };
   }
 
+  // ===========================================================
+  // FEATURE FLAGS & AMBIENTE APPYPAY (SANDBOX / PRODUCTION)
+  // ===========================================================
+  public getAppyPayEnvironment(): 'sandbox' | 'production' {
+    return appyPayAdapter.getEnvironment();
+  }
+
+  public setAppyPayEnvironment(env: 'sandbox' | 'production'): void {
+    appyPayAdapter.setEnvironment(env);
+  }
+
   private seedInitialDriverAccounts() {
     this.driverAccounts.set('drv_manuel_01', {
       id: 'dpa_manuel_01',
@@ -149,7 +161,7 @@ export class SovereignFinancialLedgerEngine {
     const tx1: RidingPaymentTransaction = {
       id: 'tx_seed_gpo_01',
       paymentIntentId: intent1.id,
-      merchantTransactionID: 'MTX_RIDING_trip_892102_01',
+      merchantTransactionID: 'RIDING_trip_892102_01',
       provider: 'APPYPAY_GPO',
       providerTransactionId: 'APPY_GPO_99182',
       status: 'Success',
@@ -200,7 +212,7 @@ export class SovereignFinancialLedgerEngine {
     const tx2: RidingPaymentTransaction = {
       id: 'tx_seed_ref_02',
       paymentIntentId: intent2.id,
-      merchantTransactionID: 'MTX_RIDING_trip_892103_02',
+      merchantTransactionID: 'RIDING_trip_892103_02',
       provider: 'APPYPAY_REF',
       providerTransactionId: 'APPY_REF_88190',
       status: 'Pending',
@@ -293,7 +305,7 @@ export class SovereignFinancialLedgerEngine {
     }
 
     const now = Date.now();
-    const merchantTransactionID = `MTX_RIDING_${intent.rideId}_${now.toString().slice(-6)}`;
+    const merchantTransactionID = `RIDING_${intent.rideId}_${now.toString().slice(-6)}`;
 
     let provider: RidingPaymentProvider = 'INTERNAL_LEDGER';
     let referenceData: RidingPaymentTransaction['referenceData'] | undefined = undefined;

@@ -59,7 +59,7 @@ interface MatchingCandidate {
 }
 
 interface SystemContextType {
-  activeTab: 'shell' | 'simulator' | 'constitution' | 'matching' | 'topology' | 'database' | 'api' | 'design' | 'analytics' | 'finance';
+  activeTab: 'shell' | 'simulator' | 'constitution' | 'matching' | 'topology' | 'database' | 'api' | 'design' | 'analytics' | 'finance' | 'gmail' | 'chat';
   setActiveTab: (tab: SystemContextType['activeTab']) => void;
   // Shell View Modes & FSM
   shellMode: ShellViewMode;

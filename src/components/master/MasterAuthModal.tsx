@@ -132,7 +132,7 @@ export const MasterAuthModal: React.FC = () => {
 
         {/* Footer */}
         <div className="px-6 py-3 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-[10px] text-neutral-500 font-mono">
-          <span>GO.BRO.AAO v1.0 • RBAC SECURE</span>
+          <span>RIDING.ao • RBAC SECURE</span>
           <span>SLA &lt; 100ms</span>
         </div>
       </div>
