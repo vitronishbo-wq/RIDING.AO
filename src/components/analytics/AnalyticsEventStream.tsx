@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSystem } from '../../context/SystemContext';
 import { AnalyticsEvent } from '../../types/architecture';
 import { Activity, CheckCircle2, Copy, Check, Filter, ShieldCheck, Clock, Terminal } from 'lucide-react';
+import { PaginationControls } from '../common/PaginationControls';
 
 const OFFICIAL_EVENT_NAMES = [
   'app_opened',
@@ -20,15 +21,29 @@ export const AnalyticsEventStream: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
   const filteredEvents =
     selectedFilter === 'all'
       ? analyticsEvents
       : analyticsEvents.filter((e) => e.eventName === selectedFilter);
 
+  const paginatedEvents = filteredEvents.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   const handleCopyEvent = (id: string, payload: any) => {
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleFilterChange = (filter: string) => {
+    setSelectedFilter(filter);
+    setCurrentPage(1);
   };
 
   return (
@@ -66,7 +81,7 @@ export const AnalyticsEventStream: React.FC = () => {
 
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setSelectedFilter('all')}
+            onClick={() => handleFilterChange('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
               selectedFilter === 'all'
                 ? 'bg-[#005A2B] text-white border border-emerald-500'
@@ -82,7 +97,7 @@ export const AnalyticsEventStream: React.FC = () => {
             return (
               <button
                 key={name}
-                onClick={() => setSelectedFilter(name)}
+                onClick={() => handleFilterChange(name)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all ${
                   isSelected
                     ? 'bg-[#FFC107] text-[#1A1A1A] font-bold shadow-md'
@@ -104,51 +119,74 @@ export const AnalyticsEventStream: React.FC = () => {
 
       {/* Events Stream Feed */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 space-y-4 shadow-xl">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <Clock className="w-4 h-4 text-[#FFC107]" />
-          <span>Fluxo Cronológico de Telemetria em Tempo Real</span>
-        </h3>
-
-        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-          {filteredEvents.map((evt) => (
-            <div
-              key={evt.id}
-              className="bg-neutral-950 border border-neutral-800 rounded-2xl p-4 space-y-2 transition-all hover:border-neutral-700"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-800/80">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                  <span className="font-mono font-bold text-xs text-[#FFC107]">
-                    {evt.eventName}
-                  </span>
-                  <span className="text-[10px] font-mono text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded">
-                    {evt.id}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="font-mono text-neutral-400 text-[11px]">{evt.timestamp}</span>
-                  <button
-                    onClick={() => handleCopyEvent(evt.id, evt.payload)}
-                    className="p-1 rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white"
-                  >
-                    {copiedId === evt.id ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Payload Box */}
-              <div className="bg-black/80 rounded-xl p-3 font-mono text-xs text-emerald-400 overflow-x-auto">
-                <pre>{JSON.stringify(evt.payload, null, 2)}</pre>
-              </div>
-            </div>
-          ))}
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <Clock className="w-4 h-4 text-[#FFC107]" />
+            <span>Fluxo Cronológico de Telemetria em Tempo Real</span>
+          </h3>
+          <span className="text-xs text-neutral-400 font-mono">
+            {filteredEvents.length} no filtro ativo
+          </span>
         </div>
+
+        {filteredEvents.length === 0 ? (
+          <div className="p-8 text-center text-xs text-neutral-500 border border-neutral-800 rounded-2xl bg-neutral-950">
+            Nenhum evento registrado para este filtro. Execute ações no simulador para gerar telemetria.
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+              {paginatedEvents.map((evt) => (
+                <div
+                  key={evt.id}
+                  className="bg-neutral-950 border border-neutral-800 rounded-2xl p-4 space-y-2 transition-all hover:border-neutral-700"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-800/80">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                      <span className="font-mono font-bold text-xs text-[#FFC107]">
+                        {evt.eventName}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded">
+                        {evt.id}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="font-mono text-neutral-400 text-[11px]">{evt.timestamp}</span>
+                      <button
+                        onClick={() => handleCopyEvent(evt.id, evt.payload)}
+                        className="p-1 rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white"
+                      >
+                        {copiedId === evt.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payload Box */}
+                  <div className="bg-black/80 rounded-xl p-3 font-mono text-xs text-emerald-400 overflow-x-auto">
+                    <pre>{JSON.stringify(evt.payload, null, 2)}</pre>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <PaginationControls
+              currentPage={currentPage}
+              totalItems={filteredEvents.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              itemName="eventos de telemetria"
+            />
+          </>
+        )}
       </div>
     </div>
   );
 };
+

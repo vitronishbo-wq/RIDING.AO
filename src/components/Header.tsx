@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSystem } from '../context/SystemContext';
+import { buildCanonicalPath } from '../utils/spaRouter';
 import {
   ShieldCheck,
   Smartphone,
@@ -73,14 +74,18 @@ export const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
           {/* Official Brand Logo */}
-          <div className="w-10 h-10 rounded-xl bg-[#005A2B] border-2 border-[#FFC107] flex items-center justify-center font-bold text-white shadow-md">
-            <span className="text-sm tracking-tighter font-mono font-extrabold text-[#FFC107]">GB</span>
+          <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#005A2B] via-emerald-600 to-[#00381B] border-2 border-[#FFC107] flex items-center justify-center font-bold text-white shadow-lg overflow-hidden group">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-amber-400/20 via-transparent to-transparent" />
+            <span className="relative text-base tracking-tighter font-mono font-black italic text-[#FFC107] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              R
+            </span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-                GO.BRO.AAO
-                <span className="text-xs text-[#FFC107] font-mono font-semibold bg-[#FFC107]/10 px-2 py-0.5 rounded border border-[#FFC107]/30">
+              <h1 className="text-xl font-black italic tracking-[0.2em] bg-gradient-to-r from-white via-neutral-100 to-[#FFC107] bg-clip-text text-transparent flex items-center gap-1.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                RIDING
+                <span className="w-2 h-2 rounded-full bg-[#FFC107] shadow-[0_0_8px_#FFC107] inline-block animate-pulse not-italic" />
+                <span className="text-xs not-italic text-[#FFC107] font-mono font-bold bg-[#FFC107]/10 px-2 py-0.5 rounded border border-[#FFC107]/30 tracking-normal ml-1">
                   Angola Mobility
                 </span>
               </h1>
@@ -134,12 +139,17 @@ export const Header: React.FC = () => {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const href = buildCanonicalPath('master_ecosystem', item.id);
             return (
-              <button
+              <a
                 key={item.id}
                 id={`tab-btn-${item.id}`}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-all duration-150 ${
+                href={href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab(item.id);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-all duration-150 cursor-pointer ${
                   isActive
                     ? 'bg-[#005A2B] text-white shadow-sm border border-emerald-500/30'
                     : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
@@ -160,7 +170,7 @@ export const Header: React.FC = () => {
                     {item.badge}
                   </span>
                 )}
-              </button>
+              </a>
             );
           })}
         </nav>

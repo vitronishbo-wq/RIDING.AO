@@ -15,6 +15,7 @@ import {
   anchorToLocation
 } from '../data/urbanAnchorsData';
 import { calculateHaversineDistanceKm } from './geohashUtils';
+import { costOptimizer } from './costOptimizer';
 
 export interface ProgressiveResolution {
   query: string;
@@ -124,6 +125,9 @@ export function parseProgressiveIntent(
       needsClarification: false
     };
   }
+
+  // Cost Optimization Guard: Local mathematical intent resolution eliminates paid Places & Geocoding APIs
+  costOptimizer.recordLocalComputeSaved('geocoding');
 
   const norm = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const entity = matchEntityFromText(norm);

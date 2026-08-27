@@ -47,7 +47,7 @@ export const ConstitutionReader: React.FC = () => {
                 <Lock className="w-5 h-5" />
               </span>
               <h2 className="text-xl font-extrabold text-white tracking-tight">
-                GO.BRO.AAO — Arquitetura Constitucional (Versão 1.0)
+                RIDING.AO — Arquitetura Constitucional (Versão 1.0)
               </h2>
               <span className="bg-[#FFC107] text-[#1A1A1A] font-black text-xs px-2.5 py-0.5 rounded-full font-mono">
                 STATUS: FROZEN

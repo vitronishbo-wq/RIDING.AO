@@ -49,6 +49,7 @@ import {
   validateGnssTelemetryPoint
 } from '../utils/adaptiveGps';
 import { financialLedgerEngine } from '../utils/financialLedgerEngine';
+import { parseRoute, buildCanonicalPath, navigateToSpa, MasterTab, VALID_MASTER_TABS } from '../utils/spaRouter';
 
 interface MatchingCandidate {
   driver: DriverState;
@@ -61,6 +62,10 @@ interface MatchingCandidate {
 interface SystemContextType {
   activeTab: 'shell' | 'simulator' | 'constitution' | 'matching' | 'topology' | 'database' | 'api' | 'design' | 'analytics' | 'finance' | 'gmail' | 'chat';
   setActiveTab: (tab: SystemContextType['activeTab']) => void;
+  // SPA Routing State
+  currentPath: string;
+  isSpaRouteFound: boolean;
+  navigateSpaRoute: (pathOrMode: string | ShellViewMode, tab?: SystemContextType['activeTab']) => void;
   // Shell View Modes & FSM
   shellMode: ShellViewMode;
   setShellMode: (mode: ShellViewMode) => void;
@@ -189,16 +194,49 @@ interface SystemContextType {
 const SystemContext = createContext<SystemContextType | undefined>(undefined);
 
 export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<SystemContextType['activeTab']>('shell');
+  const initialRoute = typeof window !== 'undefined'
+    ? parseRoute(window.location.pathname, window.location.search, window.location.hash)
+    : {
+        shellMode: 'public_passenger' as ShellViewMode,
+        activeTab: 'shell' as SystemContextType['activeTab'],
+        isKnownRoute: true,
+        rawPath: '/',
+        normalizedPath: '/',
+        queryParams: {}
+      };
+
+  const [activeTab, setActiveTabState] = useState<SystemContextType['activeTab']>(initialRoute.activeTab);
+  const [shellMode, setShellModeState] = useState<ShellViewMode>(initialRoute.shellMode);
+  const [currentPath, setCurrentPath] = useState<string>(initialRoute.rawPath || '/');
+  const [isSpaRouteFound, setIsSpaRouteFound] = useState<boolean>(initialRoute.isKnownRoute);
+
+  const setActiveTab = (tab: SystemContextType['activeTab']) => {
+    setActiveTabState(tab);
+    if (shellMode === 'master_ecosystem') {
+      navigateToSpa('master_ecosystem', { tab });
+    }
+  };
+
+  const setShellMode = (mode: ShellViewMode) => {
+    setShellModeState(mode);
+    navigateToSpa(mode, { tab: activeTab });
+  };
+
+  const navigateSpaRoute = (pathOrMode: string | ShellViewMode, tab?: SystemContextType['activeTab']) => {
+    navigateToSpa(pathOrMode, { tab });
+  };
   
   // Single App Shell State (Public Smartphone vs Driver Cockpit vs Master 3-Phone Ecosystem)
-  const [shellMode, setShellMode] = useState<ShellViewMode>('public_passenger');
-  const [primaryState, setPrimaryState] = useState<PrimaryAppState>('PUBLIC');
+  const [primaryState, setPrimaryState] = useState<PrimaryAppState>(
+    initialRoute.shellMode === 'driver_view' ? 'DRIVER' : (initialRoute.shellMode === 'master_ecosystem' ? 'MASTER' : 'PUBLIC')
+  );
   const [secondaryState, setSecondaryState] = useState<SecondaryAppState>('AUTHENTICATED');
-  const [userRole, setUserRole] = useState<UserRole>('PASSENGER');
+  const [userRole, setUserRole] = useState<UserRole>(
+    initialRoute.shellMode === 'driver_view' ? 'DRIVER' : (initialRoute.shellMode === 'master_ecosystem' ? 'MASTER' : 'PASSENGER')
+  );
   const [demoMode, setDemoMode] = useState<boolean>(true);
   const [masterFocusPhone, setMasterFocusPhone] = useState<'all' | 'passenger' | 'driver' | 'ops'>('all');
-  const [masterUnlocked, setMasterUnlocked] = useState<boolean>(false);
+  const [masterUnlocked, setMasterUnlocked] = useState<boolean>(initialRoute.shellMode === 'master_ecosystem');
   const [triggerDialpadOpen, setTriggerDialpadOpen] = useState<boolean>(false);
   const [driverAuthModalOpen, setDriverAuthModalOpen] = useState<boolean>(false);
   const [masterAuthModalOpen, setMasterAuthModalOpen] = useState<boolean>(false);
@@ -477,6 +515,49 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     return () => clearInterval(interval);
   }, [isGpsSignalLost]);
+
+  // SPA Route Synchronization & History (Back/Forward browser buttons)
+  useEffect(() => {
+    const syncRouteFromLocation = () => {
+      if (typeof window === 'undefined') return;
+      const parsed = parseRoute(window.location.pathname, window.location.search, window.location.hash);
+      setCurrentPath(window.location.pathname);
+      setIsSpaRouteFound(parsed.isKnownRoute);
+
+      if (parsed.isKnownRoute) {
+        setShellModeState(parsed.shellMode);
+        setActiveTabState(parsed.activeTab);
+
+        if (parsed.shellMode === 'driver_view') {
+          setPrimaryState('DRIVER');
+          setUserRole('DRIVER');
+          const driverIdentity = PRESET_IDENTITIES.find((p) => p.type === 'driver') || PRESET_IDENTITIES[2];
+          setCurrentIdentity(driverIdentity);
+          setActivePermissions(driverIdentity.defaultPermissions);
+        } else if (parsed.shellMode === 'master_ecosystem') {
+          setPrimaryState('MASTER');
+          setUserRole('MASTER');
+          setMasterUnlocked(true);
+          const founderIdentity = PRESET_IDENTITIES[4];
+          setCurrentIdentity(founderIdentity);
+        } else {
+          setPrimaryState('PUBLIC');
+          setUserRole('PASSENGER');
+          const passengerIdentity = PRESET_IDENTITIES[1];
+          setCurrentIdentity(passengerIdentity);
+          setActivePermissions(passengerIdentity.defaultPermissions);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', syncRouteFromLocation);
+    window.addEventListener('riding:spa-navigation', syncRouteFromLocation);
+
+    return () => {
+      window.removeEventListener('popstate', syncRouteFromLocation);
+      window.removeEventListener('riding:spa-navigation', syncRouteFromLocation);
+    };
+  }, []);
 
   const simulateGpsSignalLoss = (lost: boolean) => {
     setIsGpsSignalLost(lost);
@@ -1548,6 +1629,9 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       value={{
         activeTab,
         setActiveTab,
+        currentPath,
+        isSpaRouteFound,
+        navigateSpaRoute,
         shellMode,
         setShellMode,
         primaryState,

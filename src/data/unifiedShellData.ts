@@ -146,7 +146,7 @@ export const PRESET_IDENTITIES: UserIdentityProfile[] = [
     phoneMasked: '+244 944 *** 112',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
     defaultPermissions: ['driver.manage', 'user.manage', 'finance.read', 'finance.write', 'system.logs', 'system.audit', 'system.config'],
-    description: 'Administrador de Operações e Finanças do GO.BRO.AAO.',
+    description: 'Administrador de Operações e Finanças do RIDING.AO.',
     sessionEpoch: 1
   }
 ];

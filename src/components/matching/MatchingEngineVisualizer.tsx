@@ -15,9 +15,14 @@ import {
   TrendingUp,
   Award
 } from 'lucide-react';
+import { PaginationControls } from '../common/PaginationControls';
 
 export const MatchingEngineVisualizer: React.FC = () => {
   const { drivers, selectedOrigin, lastMatchingLatencyMs } = useSystem();
+
+  // Driver list pagination
+  const [driverPage, setDriverPage] = useState<number>(1);
+  const [driverPageSize, setDriverPageSize] = useState<number>(5);
 
   // Test sandbox sliders for live scoring experimentation
   const [testDistance, setTestDistance] = useState<number>(3.2);
@@ -113,7 +118,10 @@ export const MatchingEngineVisualizer: React.FC = () => {
 
           {/* Candidate Cards */}
           <div className="space-y-2.5">
-            {drivers.map((driver, index) => {
+            {drivers
+              .slice((driverPage - 1) * driverPageSize, driverPage * driverPageSize)
+              .map((driver, index) => {
+              const actualIndex = (driverPage - 1) * driverPageSize + index;
               const dDist = calculateHaversineDistanceKm(selectedOrigin.lat, selectedOrigin.lng, driver.lat, driver.lng);
               const dEta = Math.round(dDist * 2.5 + 2);
               const scoreResult = calculateDriverScore({
@@ -123,7 +131,7 @@ export const MatchingEngineVisualizer: React.FC = () => {
                 speedKmH: driver.speedKmH
               });
 
-              const isTop = index === 0;
+              const isTop = actualIndex === 0;
 
               return (
                 <div
@@ -140,7 +148,7 @@ export const MatchingEngineVisualizer: React.FC = () => {
                         isTop ? 'bg-[#FFC107] text-[#1A1A1A]' : 'bg-neutral-800 text-neutral-400'
                       }`}
                     >
-                      #{index + 1}
+                      #{actualIndex + 1}
                     </span>
 
                     <img
@@ -178,6 +186,16 @@ export const MatchingEngineVisualizer: React.FC = () => {
               );
             })}
           </div>
+
+          <PaginationControls
+            currentPage={driverPage}
+            totalItems={drivers.length}
+            pageSize={driverPageSize}
+            onPageChange={setDriverPage}
+            onPageSizeChange={setDriverPageSize}
+            pageSizeOptions={[3, 5, 10]}
+            itemName="motoristas"
+          />
         </div>
 
         {/* Live Mathematical Sandbox Slider */}

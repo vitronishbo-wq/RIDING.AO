@@ -2,7 +2,7 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "User profile for passengers and system operators",
+      "description": "User profile for passengers and system operators (Camada Operacional)",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Unique user ID" },
@@ -15,7 +15,7 @@
     },
     "Driver": {
       "title": "Driver",
-      "description": "Driver profile and real-time operational status in Luanda",
+      "description": "Driver profile and real-time operational status in Luanda (Camada Operacional)",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Driver unique identifier" },
@@ -34,7 +34,7 @@
     },
     "Ride": {
       "title": "Ride",
-      "description": "Operational ride document connecting passenger and driver in Luanda",
+      "description": "Operational ride document connecting passenger and driver in Luanda (Camada Operacional)",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Unique trip ID" },
@@ -53,7 +53,7 @@
     },
     "PaymentTransaction": {
       "title": "PaymentTransaction",
-      "description": "Financial ledger record and payment intent tracking",
+      "description": "Financial ledger record and payment intent tracking (Camada Transacional - ACID)",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Transaction identifier" },
@@ -69,7 +69,7 @@
     },
     "Location": {
       "title": "Location",
-      "description": "Luanda geographic anchor point",
+      "description": "Luanda geographic anchor point (Camada Pública)",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Anchor ID" },
@@ -81,9 +81,22 @@
       },
       "required": ["id", "name", "geohash", "lat", "lng"]
     },
+    "PublicTariff": {
+      "title": "PublicTariff",
+      "description": "Matriz pública de tarifas e categorias (Camada Pública)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Categoria ID (ex: economico, conforto)" },
+        "name": { "type": "string", "description": "Nome comercial" },
+        "baseFareAOA": { "type": "number", "description": "Tarifa base de partida" },
+        "perKmRateAOA": { "type": "number", "description": "Valor por km" },
+        "minimumFloorAOA": { "type": "number", "description": "Piso mínimo legal (500 AOA)" }
+      },
+      "required": ["id", "name", "baseFareAOA", "minimumFloorAOA"]
+    },
     "Setting": {
       "title": "Setting",
-      "description": "Sovereign platform financial policy and system config",
+      "description": "Sovereign platform financial policy and system config (Camada Transacional/Soberana)",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "Setting ID" },
@@ -99,27 +112,39 @@
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "Stores passenger and operator profiles"
+      "description": "[TIER 2 - OPERATIONAL] Stores passenger and operator profiles"
     },
     "/drivers/{driverId}": {
       "schema": "Driver",
-      "description": "Stores driver profiles, telemetry and active status"
+      "description": "[TIER 2 - OPERATIONAL] Stores driver profiles, telemetry and active status"
     },
     "/rides/{rideId}": {
       "schema": "Ride",
-      "description": "Stores ride requests, status and trip details"
+      "description": "[TIER 2 - OPERATIONAL] Stores active and historic ride states"
+    },
+    "/driver_telemetry/{driverId}": {
+      "schema": "Driver",
+      "description": "[TIER 2 - OPERATIONAL] High-frequency GPS telemetry and velocity"
     },
     "/transactions/{transactionId}": {
       "schema": "PaymentTransaction",
-      "description": "Stores financial transactions and operational payment state"
+      "description": "[TIER 1 - TRANSACTIONAL] Stores financial transactions and operational payment state (ACID immutable)"
+    },
+    "/payment_intents/{intentId}": {
+      "schema": "PaymentTransaction",
+      "description": "[TIER 1 - TRANSACTIONAL] Idempotent payment intent tracking"
     },
     "/locations/{locationId}": {
       "schema": "Location",
-      "description": "Stores Luanda geohash dispatch anchors"
+      "description": "[TIER 3 - PUBLIC] Stores Luanda geohash dispatch anchors (Public read-only)"
+    },
+    "/public_tariffs/{tariffId}": {
+      "schema": "PublicTariff",
+      "description": "[TIER 3 - PUBLIC] Public pricing matrix and 500 AOA floor"
     },
     "/settings/{settingId}": {
       "schema": "Setting",
-      "description": "Stores sovereign platform policies"
+      "description": "[TIER 1 - TRANSACTIONAL] Stores sovereign platform policies"
     }
   }
 }

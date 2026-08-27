@@ -9,7 +9,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "rollback:verify": "bun run build && echo 'Rollback build verification passed'",
+    "rollback:hosting": "firebase hosting:channel:deploy rollback-target && echo 'Deployed to rollback channel'"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

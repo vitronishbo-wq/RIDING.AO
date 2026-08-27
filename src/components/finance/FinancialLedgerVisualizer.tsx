@@ -18,6 +18,10 @@ import {
 } from 'lucide-react';
 import { RidingPaymentEvent, RidingPaymentMethod } from '../../types/architecture';
 import { appyPayAdapter } from '../../services/appypayAdapter';
+import { costOptimizer } from '../../utils/costOptimizer';
+import { strategicCache, STRATEGIC_CACHE_TIER_RULES, CacheTier } from '../../utils/strategicCache';
+import { ADAPTIVE_GPS_RULES } from '../../utils/adaptiveGps';
+import { PaginationControls } from '../common/PaginationControls';
 
 export const FinancialLedgerVisualizer: React.FC = () => {
   const {
@@ -36,9 +40,22 @@ export const FinancialLedgerVisualizer: React.FC = () => {
   } = useSystem();
 
   // Active view tab in dense operational panel
-  const [activeTab, setActiveTab] = useState<'transactions' | 'webhooks' | 'ledger' | 'reconciliation' | 'policy'>(
+  const [activeTab, setActiveTab] = useState<'transactions' | 'webhooks' | 'ledger' | 'reconciliation' | 'policy' | 'costs'>(
     'transactions'
   );
+
+  // Pagination states for all data sets
+  const [txPage, setTxPage] = useState<number>(1);
+  const [txPageSize, setTxPageSize] = useState<number>(10);
+
+  const [whPage, setWhPage] = useState<number>(1);
+  const [whPageSize, setWhPageSize] = useState<number>(10);
+
+  const [ledgerPage, setLedgerPage] = useState<number>(1);
+  const [ledgerPageSize, setLedgerPageSize] = useState<number>(10);
+
+  const [reconPage, setReconPage] = useState<number>(1);
+  const [reconPageSize, setReconPageSize] = useState<number>(10);
 
   // AppyPay Feature Flag Environment
   const [appyPayEnv, setAppyPayEnv] = useState<'sandbox' | 'production'>(appyPayAdapter.getEnvironment());
@@ -234,6 +251,14 @@ export const FinancialLedgerVisualizer: React.FC = () => {
         >
           5. Políticas Comerciais
         </button>
+        <button
+          onClick={() => setActiveTab('costs')}
+          className={`px-3 py-1 rounded font-medium transition-colors ${
+            activeTab === 'costs' ? 'bg-[#005A2B] text-white' : 'text-neutral-400 hover:text-white'
+          }`}
+        >
+          6. Eficiência & Controle de Custos ⚡
+        </button>
       </div>
 
       {/* VIEW 1: TRANSAÇÕES & FIRESTORE STATES (DENSE TABLE) */}
@@ -293,7 +318,9 @@ export const FinancialLedgerVisualizer: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-900 text-neutral-300">
-                {financialTransactions.map((tx) => {
+                {financialTransactions
+                  .slice((txPage - 1) * txPageSize, txPage * txPageSize)
+                  .map((tx) => {
                   const isSelected = tx.merchantTransactionID === selectedTx?.merchantTransactionID;
                   return (
                     <tr
@@ -351,6 +378,15 @@ export const FinancialLedgerVisualizer: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          <PaginationControls
+            currentPage={txPage}
+            totalItems={financialTransactions.length}
+            pageSize={txPageSize}
+            onPageChange={setTxPage}
+            onPageSizeChange={setTxPageSize}
+            itemName="transações"
+          />
         </div>
       )}
 
@@ -380,7 +416,9 @@ export const FinancialLedgerVisualizer: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  financialEvents.map((evt) => (
+                  financialEvents
+                    .slice((whPage - 1) * whPageSize, whPage * whPageSize)
+                    .map((evt) => (
                     <tr key={evt.eventId} className="hover:bg-neutral-900/60">
                       <td className="p-2 text-neutral-400">{evt.eventId}</td>
                       <td className="p-2 text-white font-bold">{evt.merchantTransactionID}</td>
@@ -412,6 +450,15 @@ export const FinancialLedgerVisualizer: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          <PaginationControls
+            currentPage={whPage}
+            totalItems={financialEvents.length}
+            pageSize={whPageSize}
+            onPageChange={setWhPage}
+            onPageSizeChange={setWhPageSize}
+            itemName="webhooks"
+          />
         </div>
       )}
 
@@ -435,7 +482,9 @@ export const FinancialLedgerVisualizer: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-900 text-neutral-300">
-                {financialLedgerEntries.map((entry) => (
+                {financialLedgerEntries
+                  .slice((ledgerPage - 1) * ledgerPageSize, ledgerPage * ledgerPageSize)
+                  .map((entry) => (
                   <tr key={entry.id} className="hover:bg-neutral-900/60">
                     <td className="p-2 text-neutral-400">{entry.id}</td>
                     <td className="p-2 font-bold text-white">
@@ -463,6 +512,15 @@ export const FinancialLedgerVisualizer: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          <PaginationControls
+            currentPage={ledgerPage}
+            totalItems={financialLedgerEntries.length}
+            pageSize={ledgerPageSize}
+            onPageChange={setLedgerPage}
+            onPageSizeChange={setLedgerPageSize}
+            itemName="lançamentos contábeis"
+          />
         </div>
       )}
 
@@ -506,7 +564,9 @@ export const FinancialLedgerVisualizer: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-800 text-neutral-300">
-                  {lastReconciliationReport.items.map((item, idx) => (
+                  {lastReconciliationReport.items
+                    .slice((reconPage - 1) * reconPageSize, reconPage * reconPageSize)
+                    .map((item, idx) => (
                     <tr key={idx}>
                       <td className="p-1.5">{item.merchantTransactionID}</td>
                       <td className="p-1.5 text-neutral-400">{item.providerTransactionId || 'N/A'}</td>
@@ -527,6 +587,15 @@ export const FinancialLedgerVisualizer: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+
+              <PaginationControls
+                currentPage={reconPage}
+                totalItems={lastReconciliationReport.items.length}
+                pageSize={reconPageSize}
+                onPageChange={setReconPage}
+                onPageSizeChange={setReconPageSize}
+                itemName="itens reconciliados"
+              />
             </div>
           )}
         </div>
@@ -588,6 +657,348 @@ export const FinancialLedgerVisualizer: React.FC = () => {
             </button>
           </div>
         </form>
+      )}
+
+      {/* VIEW 6: CONTROLE DE CUSTOS & EFICIÊNCIA OPERACIONAL */}
+      {activeTab === 'costs' && (
+        <div className="space-y-4">
+          <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-[#FFC107]" />
+                  Matriz de Eliminação de Custos & Otimização de Infraestrutura
+                </h3>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Estratégias de computação de borda, geocodificação offline e throttling para evitar custos em nuvem.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  costOptimizer.clearCache();
+                  setStatusMessage('Cache de leituras do Firestore revalidado.');
+                  setTimeout(() => setStatusMessage(null), 3000);
+                }}
+                className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded text-xs font-mono flex items-center gap-1.5 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-sky-400" />
+                <span>Limpar Cache Local</span>
+              </button>
+            </div>
+          </div>
+
+          {/* KPI Cards: Economia Real Estimada */}
+          {(() => {
+            const metrics = costOptimizer.getMetrics();
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-neutral-900/90 border border-emerald-500/30 rounded-xl p-3">
+                  <span className="text-[10px] uppercase font-mono text-emerald-400 font-bold block">
+                    Economia Estimada (Moeda)
+                  </span>
+                  <div className="text-lg font-bold text-white font-mono mt-1">
+                    {formatAOA(metrics.estimatedAoaSaved)}
+                  </div>
+                  <span className="text-[10px] text-neutral-400 font-mono">
+                    ≈ ${metrics.estimatedUsdSaved.toFixed(4)} USD poupados
+                  </span>
+                </div>
+
+                <div className="bg-neutral-900/90 border border-sky-500/30 rounded-xl p-3">
+                  <span className="text-[10px] uppercase font-mono text-sky-400 font-bold block">
+                    Geocoding & Places Offline
+                  </span>
+                  <div className="text-lg font-bold text-white font-mono mt-1">
+                    {metrics.localGeocodingCallsSaved} chamadas locais
+                  </div>
+                  <span className="text-[10px] text-neutral-400 font-mono">
+                    Substitui APIs pagas ($5.00/mil reqs) por Geohash nativo
+                  </span>
+                </div>
+
+                <div className="bg-neutral-900/90 border border-amber-500/30 rounded-xl p-3">
+                  <span className="text-[10px] uppercase font-mono text-amber-400 font-bold block">
+                    Leituras Firestore Poupadas
+                  </span>
+                  <div className="text-lg font-bold text-white font-mono mt-1">
+                    {metrics.cachedFirestoreReadsSaved} leituras em cache
+                  </div>
+                  <span className="text-[10px] text-neutral-400 font-mono">
+                    TTL memoizado evita queries redundantes no banco
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Tabela de Políticas de Eliminação de Custos */}
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+            <div className="p-2.5 bg-neutral-850 border-b border-neutral-800 text-[11px] font-mono font-bold text-neutral-300">
+              Operações de Alto Custo Eliminadas vs Alternativas Eficientes
+            </div>
+            <div className="divide-y divide-neutral-800/80 text-xs">
+              <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div>
+                  <span className="text-red-400 font-bold block">❌ Operação de Alto Custo Eliminada</span>
+                  <p className="text-[11px] text-neutral-300 mt-1">
+                    Requisição contínua para Google Maps Geocoding & Places API a cada letra digitada pelo passageiro.
+                  </p>
+                </div>
+                <div>
+                  <span className="text-emerald-400 font-bold block">✅ Solução RIDING.ao Implementada</span>
+                  <p className="text-[11px] text-neutral-300 mt-1">
+                    Motor de Resolução de Intenção Progressivo com Âncoras Urbanas pré-carregadas e cálculo de Haversine local ($0.00 de custo de API).
+                  </p>
+                </div>
+                <div className="text-right flex flex-col justify-center">
+                  <span className="text-emerald-400 font-mono font-bold text-sm">100% Gratuito</span>
+                  <span className="text-[10px] text-neutral-500 font-mono">Zero dependência de cartão de crédito</span>
+                </div>
+              </div>
+
+              <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div>
+                  <span className="text-red-400 font-bold block">❌ Operação de Alto Custo Eliminada</span>
+                  <p className="text-[11px] text-neutral-300 mt-1">
+                    Polling ou escrita no Firestore a cada 1 segundo com coordenadas brutas de GPS de centenas de motoristas.
+                  </p>
+                </div>
+                <div>
+                  <span className="text-emerald-400 font-bold block">✅ Solução RIDING.ao Implementada</span>
+                  <p className="text-[11px] text-neutral-300 mt-1">
+                    GPS Adaptativo (Cap. 5 da Constituição): 0 updates/min quando parado; 15s em baixa velocidade; 3s apenas em trânsito rápido.
+                  </p>
+                </div>
+                <div className="text-right flex flex-col justify-center">
+                  <span className="text-emerald-400 font-mono font-bold text-sm">~85% Redução</span>
+                  <span className="text-[10px] text-neutral-500 font-mono">Em escritas e tráfego móvel</span>
+                </div>
+              </div>
+
+              <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div>
+                  <span className="text-red-400 font-bold block">❌ Operação de Alto Custo Eliminada</span>
+                  <p className="text-[11px] text-neutral-300 mt-1">
+                    Listagens do Firestore sem cláusula de limite (<code className="text-amber-400 font-mono">getDocs(collection)</code>) causando full collection scans.
+                  </p>
+                </div>
+                <div>
+                  <span className="text-emerald-400 font-bold block">✅ Solução RIDING.ao Implementada</span>
+                  <p className="text-[11px] text-neutral-300 mt-1">
+                    Consultas indexadas compostas com limite estrito de paginação (<code className="text-emerald-400 font-mono">limit(20)</code>) e cache estratégico em memória.
+                  </p>
+                </div>
+                <div className="text-right flex flex-col justify-center">
+                  <span className="text-emerald-400 font-mono font-bold text-sm">Previsibilidade Total</span>
+                  <span className="text-[10px] text-neutral-500 font-mono">Consumo constante e previsível</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* MATRIZ DE CACHE ESTRATÉGICO: PERFORMANCE VS CONSISTÊNCIA */}
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-800 pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                  <Database className="w-4 h-4 text-emerald-400" />
+                  Matriz de Cache Estratégico (Equilíbrio Performance & Consistência)
+                </h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Classificação formal de camadas de dados: Cache agressivo onde seguro, Bypass absoluto onde consistência é crítica.
+                </p>
+              </div>
+
+              {(() => {
+                const cacheStats = strategicCache.getStats();
+                return (
+                  <div className="flex items-center gap-3 text-xs font-mono">
+                    <span className="text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded">
+                      Hits: <strong>{cacheStats.hits}</strong>
+                    </span>
+                    <span className="text-sky-400 bg-sky-950/60 border border-sky-800/60 px-2 py-0.5 rounded">
+                      Misses: <strong>{cacheStats.misses}</strong>
+                    </span>
+                    <span className="text-amber-400 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">
+                      Bypasses $ACID: <strong>{cacheStats.bypasses}</strong>
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* 4 Strategic Tiers Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* TIER 0 */}
+              <div className="bg-neutral-950 border border-red-500/40 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-800/80">
+                    TIER 0: NO CACHE
+                  </span>
+                  <span className="text-[10px] font-mono text-neutral-400">TTL 0s ($ACID)</span>
+                </div>
+                <h5 className="text-xs font-bold text-white">Consistência Absoluta</h5>
+                <p className="text-[10px] text-neutral-400 leading-relaxed">
+                  {STRATEGIC_CACHE_TIER_RULES[CacheTier.TIER_0_NO_CACHE].description}
+                </p>
+                <div className="pt-1 text-[10px] text-neutral-300 font-mono space-y-0.5">
+                  <span className="block text-red-400 font-semibold">• Transações & Ledger</span>
+                  <span className="block text-red-400 font-semibold">• Saldos & Conciliações</span>
+                  <span className="block text-red-400 font-semibold">• FSM de Corrida Ativa</span>
+                </div>
+              </div>
+
+              {/* TIER 1 */}
+              <div className="bg-neutral-950 border border-amber-500/40 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800/80">
+                    TIER 1: NEAR-REALTIME
+                  </span>
+                  <span className="text-[10px] font-mono text-neutral-400">TTL 5s</span>
+                </div>
+                <h5 className="text-xs font-bold text-white">Volátil & Reativo</h5>
+                <p className="text-[10px] text-neutral-400 leading-relaxed">
+                  {STRATEGIC_CACHE_TIER_RULES[CacheTier.TIER_1_NEAR_REALTIME].description}
+                </p>
+                <div className="pt-1 text-[10px] text-neutral-300 font-mono space-y-0.5">
+                  <span className="block text-amber-400 font-semibold">• Motoristas por Geohash</span>
+                  <span className="block text-amber-400 font-semibold">• Densidade de Trânsito</span>
+                  <span className="block text-amber-400 font-semibold">• Invalidação em mutação</span>
+                </div>
+                <button
+                  onClick={() => {
+                    strategicCache.invalidateTier(CacheTier.TIER_1_NEAR_REALTIME);
+                    setStatusMessage('Cache Tier 1 (Near-Realtime) invalidado.');
+                    setTimeout(() => setStatusMessage(null), 3000);
+                  }}
+                  className="w-full mt-2 py-1 text-[10px] font-mono bg-neutral-900 hover:bg-neutral-800 text-amber-300 rounded border border-neutral-800"
+                >
+                  Invalidar Tier 1
+                </button>
+              </div>
+
+              {/* TIER 2 */}
+              <div className="bg-neutral-950 border border-sky-500/40 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800/80">
+                    TIER 2: SHORT-LIVED
+                  </span>
+                  <span className="text-[10px] font-mono text-neutral-400">TTL 45s</span>
+                </div>
+                <h5 className="text-xs font-bold text-white">Agregações & Históricos</h5>
+                <p className="text-[10px] text-neutral-400 leading-relaxed">
+                  {STRATEGIC_CACHE_TIER_RULES[CacheTier.TIER_2_SHORT_LIVED].description}
+                </p>
+                <div className="pt-1 text-[10px] text-neutral-300 font-mono space-y-0.5">
+                  <span className="block text-sky-400 font-semibold">• Histórico de Corridas</span>
+                  <span className="block text-sky-400 font-semibold">• Média de Avaliações</span>
+                  <span className="block text-sky-400 font-semibold">• Relatórios Agregados</span>
+                </div>
+                <button
+                  onClick={() => {
+                    strategicCache.invalidateTier(CacheTier.TIER_2_SHORT_LIVED);
+                    setStatusMessage('Cache Tier 2 (Short-Lived) invalidado.');
+                    setTimeout(() => setStatusMessage(null), 3000);
+                  }}
+                  className="w-full mt-2 py-1 text-[10px] font-mono bg-neutral-900 hover:bg-neutral-800 text-sky-300 rounded border border-neutral-800"
+                >
+                  Invalidar Tier 2
+                </button>
+              </div>
+
+              {/* TIER 3 */}
+              <div className="bg-neutral-950 border border-emerald-500/40 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/80">
+                    TIER 3: STATIC CATALOG
+                  </span>
+                  <span className="text-[10px] font-mono text-neutral-400">TTL 1h</span>
+                </div>
+                <h5 className="text-xs font-bold text-white">Imutáveis Determinísticos</h5>
+                <p className="text-[10px] text-neutral-400 leading-relaxed">
+                  {STRATEGIC_CACHE_TIER_RULES[CacheTier.TIER_3_STATIC_CATALOG].description}
+                </p>
+                <div className="pt-1 text-[10px] text-neutral-300 font-mono space-y-0.5">
+                  <span className="block text-emerald-400 font-semibold">• Âncoras Urbanas Luanda</span>
+                  <span className="block text-emerald-400 font-semibold">• Artigos da Constituição</span>
+                  <span className="block text-emerald-400 font-semibold">• Alíquotas Tributárias</span>
+                </div>
+                <button
+                  onClick={() => {
+                    strategicCache.invalidateTier(CacheTier.TIER_3_STATIC_CATALOG);
+                    setStatusMessage('Cache Tier 3 (Static Catalog) invalidado.');
+                    setTimeout(() => setStatusMessage(null), 3000);
+                  }}
+                  className="w-full mt-2 py-1 text-[10px] font-mono bg-neutral-900 hover:bg-neutral-800 text-emerald-300 rounded border border-neutral-800"
+                >
+                  Invalidar Tier 3
+                </button>
+              </div>
+            </div>
+
+            {/* Chaves Ativas no Cache Manager */}
+            <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono text-neutral-300">
+                <span className="font-bold flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5 text-neutral-400" />
+                  Inspetor de Entradas em Memória ({strategicCache.getEntries().length} ativas)
+                </span>
+                <span className="text-[10px] text-neutral-500">
+                  Uso estimado: ~{(strategicCache.getStats().estimatedMemoryBytes / 1024).toFixed(2)} KB
+                </span>
+              </div>
+
+              {strategicCache.getEntries().length === 0 ? (
+                <div className="p-4 text-center text-xs text-neutral-500 font-mono border border-dashed border-neutral-800 rounded-lg">
+                  Nenhuma chave ativa no cache no momento. Execute consultas no simulador para preencher sob demanda.
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 text-xs font-mono">
+                  {strategicCache.getEntries().map((entry) => {
+                    const remainingMs = Math.max(0, entry.expiresAt - Date.now());
+                    const remainingSec = Math.round(remainingMs / 1000);
+                    return (
+                      <div
+                        key={entry.key}
+                        className="flex items-center justify-between bg-neutral-900 p-2 rounded border border-neutral-800 hover:border-neutral-700"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span
+                            className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                              entry.tier === CacheTier.TIER_1_NEAR_REALTIME
+                                ? 'bg-amber-950 text-amber-400'
+                                : entry.tier === CacheTier.TIER_2_SHORT_LIVED
+                                ? 'bg-sky-950 text-sky-400'
+                                : 'bg-emerald-950 text-emerald-400'
+                            }`}
+                          >
+                            {entry.tier.replace('TIER_', 'T')}
+                          </span>
+                          <span className="text-white truncate max-w-xs">{entry.key}</span>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0 text-[11px] text-neutral-400">
+                          <span>Hits: <strong className="text-white">{entry.hits}</strong></span>
+                          <span>Expira em: <strong className="text-amber-400">{remainingSec}s</strong></span>
+                          <button
+                            onClick={() => {
+                              strategicCache.invalidateKey(entry.key);
+                              setStatusMessage(`Chave [${entry.key}] removida do cache.`);
+                              setTimeout(() => setStatusMessage(null), 3000);
+                            }}
+                            className="text-red-400 hover:text-red-300 text-[10px] px-1.5 py-0.5 bg-neutral-800 rounded hover:bg-neutral-700"
+                          >
+                            Expulsar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

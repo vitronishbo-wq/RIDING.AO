@@ -2,7 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for Role-Based Access Control (RBAC) & Custom Claims
+    // =========================================================================
+    // HELPER FUNCTIONS (RBAC & SOVEREIGN ACCESS CONTROL)
+    // =========================================================================
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -19,24 +21,86 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.role == 'DRIVER';
     }
 
-    // 1. Users Collection
-    // Passengers and Drivers can read/write their own profile; Masters have administrative access.
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isMaster());
-      allow create, update: if isAuthenticated() && (isOwner(userId) || isMaster());
+    // =========================================================================
+    // CAMADA 1: DADOS TRANSACIONAIS (FINANCEIRO, LEDGER & PAGAMENTOS ACID)
+    // Regra: Imutabilidade estrita. Clientes NUNCA escrevem diretamente.
+    // =========================================================================
+
+    // 1.1 Transações Financeiras (EMIS / AppyPay / Multicaixa)
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid ||
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        isMaster()
+      );
+      allow write: if isMaster();
+    }
+
+    // 1.2 Intenções de Pagamento (Idempotência e Conciliação)
+    match /payment_intents/{intentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        isMaster()
+      );
+      allow write: if isMaster();
+    }
+
+    // 1.3 Entradas de Ledger de Partida Dobrada e Split 85/15
+    match /riding_ledger_entries/{entryId} {
+      allow read: if isAuthenticated() && (
+        resource.data.driverId == request.auth.uid ||
+        isMaster()
+      );
+      allow write: if isMaster();
+    }
+
+    // 1.4 Contas de Liquidação e Payout dos Motoristas
+    match /driver_payment_accounts/{driverId} {
+      allow read: if isAuthenticated() && (request.auth.uid == driverId || isMaster());
+      allow write: if isMaster();
+    }
+
+    // =========================================================================
+    // CAMADA 2: DADOS OPERACIONAIS (TEMPO REAL, TELEMETRIA & DESPACHO EFÊMERO)
+    // Regra: Alta frequência, TTL volátil, sem exposição de dados financeiros.
+    // =========================================================================
+
+    // 2.1 Telemetria Veicular e GPS em Tempo Real
+    match /driver_telemetry/{driverId} {
+      allow read: if isAuthenticated();
+      allow update, create: if isAuthenticated() && (request.auth.uid == driverId || isMaster());
       allow delete: if isMaster();
     }
 
-    // 2. Drivers Collection
-    // Public/Passenger can read basic driver location and rating; Driver can update own telemetry/status; Master manages all.
-    match /drivers/{driverId} {
+    // 2.2 Localizações Ativas de Motoristas (Geohash)
+    match /driver_locations/{driverId} {
       allow read: if isAuthenticated();
-      allow update: if isAuthenticated() && (request.auth.uid == driverId || isMaster());
-      allow create, delete: if isMaster();
+      allow update, create: if isAuthenticated() && (request.auth.uid == driverId || isMaster());
+      allow delete: if isMaster();
     }
 
-    // 3. Rides Collection
-    // Passenger creates and reads their rides; Driver reads assigned rides and updates status; Master reads all.
+    // 2.3 Status de Disponibilidade (Online / Busy / Offline)
+    match /drivers_online/{driverId} {
+      allow read: if isAuthenticated();
+      allow update, create: if isAuthenticated() && (request.auth.uid == driverId || isMaster());
+      allow delete: if isMaster();
+    }
+
+    // 2.4 Solicitações Ativas de Corrida (Despacho K-Ring)
+    match /trip_requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.passengerId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        isDriver() ||
+        isMaster()
+      );
+      allow delete: if isMaster();
+    }
+
+    // 2.5 Corridas em Curso (Ciclo Operacional)
     match /rides/{rideId} {
       allow read: if isAuthenticated() && (
         resource.data.passengerId == request.auth.uid ||
@@ -52,36 +116,85 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
-    // 4. Vehicles Collection
-    // Drivers read/update their vehicle; Master verifies vehicle and manages fleet.
+    // 2.6 Corridas Ativas em Tempo Real
+    match /active_trips/{tripId} {
+      allow read: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        isMaster()
+      );
+      allow write: if isAuthenticated() && (
+        resource.data.driverId == request.auth.uid ||
+        resource.data.passengerId == request.auth.uid ||
+        isMaster()
+      );
+    }
+
+    // 2.7 Presença e Heartbeat dos Usuários
+    match /presence/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isMaster());
+    }
+
+    // 2.8 Perfis de Usuários (Operacionais)
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isMaster());
+      allow create, update: if isAuthenticated() && (isOwner(userId) || isMaster());
+      allow delete: if isMaster();
+    }
+
+    // 2.9 Cadastro de Veículos Operacionais
     match /vehicles/{vehicleId} {
       allow read: if isAuthenticated();
       allow update: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isMaster());
       allow create, delete: if isMaster();
     }
 
-    // 5. Transactions Collection (Immutable Ledger)
-    // Passenger/Driver can read their own transactions; Writes/deletes are strictly reserved for verified backend / Master.
-    match /transactions/{transactionId} {
-      allow read: if isAuthenticated() && (
-        resource.data.fromUid == request.auth.uid ||
-        resource.data.toUid == request.auth.uid ||
-        isMaster()
-      );
-      allow write: if isMaster();
+    // 2.10 Motoristas (Perfil Operacional)
+    match /drivers/{driverId} {
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && (request.auth.uid == driverId || isMaster());
+      allow create, delete: if isMaster();
     }
 
-    // 6. Locations Collection (Luanda Geohash Points)
-    // Read-only for authenticated users; Master manages dispatch zones.
+    // =========================================================================
+    // CAMADA 3: DADOS PÚBLICOS (CATÁLOGO ABERTO, TARIFAS & PONTOS DE INTERESSE)
+    // Regra: Leitura 100% pública (Zero PII). Escrita restrita a Master.
+    // =========================================================================
+
+    // 3.1 Bairros e Paragens de Luanda (Âncoras Geográficas)
     match /locations/{locationId} {
       allow read: if true;
       allow write: if isMaster();
     }
 
-    // 7. Settings Collection (Pricing, Fare Multipliers, Commission Rate)
-    // Global parameters: read-only for clients, strictly editable by Master.
+    // 3.2 Catálogo Público de Localizações
+    match /public_locations/{locationId} {
+      allow read: if true;
+      allow write: if isMaster();
+    }
+
+    // 3.3 Matriz Pública de Tarifas e Piso 500 AOA
+    match /public_tariffs/{tariffId} {
+      allow read: if true;
+      allow write: if isMaster();
+    }
+
+    // 3.4 Catálogo de Pontos de Interesse (POI) Luanda
+    match /poi_catalog/{poiId} {
+      allow read: if true;
+      allow write: if isMaster();
+    }
+
+    // 3.5 Status Operacional do Sistema (Uptime & SLA)
+    match /system_status/{statusId} {
+      allow read: if true;
+      allow write: if isMaster();
+    }
+
+    // 3.6 Configurações Gerais Soberanas da Plataforma
     match /settings/{settingId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() || true;
       allow write: if isMaster();
     }
   }

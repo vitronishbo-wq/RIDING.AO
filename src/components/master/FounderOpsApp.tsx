@@ -24,6 +24,7 @@ import {
   Coins,
   Send
 } from 'lucide-react';
+import { PaginationControls } from '../common/PaginationControls';
 
 export const FounderOpsApp: React.FC = () => {
   const {
@@ -57,6 +58,13 @@ export const FounderOpsApp: React.FC = () => {
   const [editingPinId, setEditingPinId] = useState<string | null>(null);
   const [newPinValue, setNewPinValue] = useState<string>('');
   const [reconcileSuccess, setReconcileSuccess] = useState<string | null>(null);
+
+  // Pagination states
+  const [credPage, setCredPage] = useState<number>(1);
+  const [credPageSize, setCredPageSize] = useState<number>(5);
+
+  const [batchPage, setBatchPage] = useState<number>(1);
+  const [batchPageSize, setBatchPageSize] = useState<number>(5);
 
   const onlineDriversCount = drivers.filter((d) => d.status !== 'offline').length;
   const totalFleetBalanceAOA = drivers.reduce((acc, d) => acc + d.walletBalanceAOA, 0);
@@ -355,7 +363,9 @@ export const FounderOpsApp: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              {managedCredentials.map((cred) => {
+              {managedCredentials
+                .slice((credPage - 1) * credPageSize, credPage * credPageSize)
+                .map((cred) => {
                 const isBlocked = cred.status === 'blocked' || cred.status === 'suspended';
                 return (
                   <div
@@ -489,6 +499,16 @@ export const FounderOpsApp: React.FC = () => {
                 );
               })}
             </div>
+
+            <PaginationControls
+              currentPage={credPage}
+              totalItems={managedCredentials.length}
+              pageSize={credPageSize}
+              onPageChange={setCredPage}
+              onPageSizeChange={setCredPageSize}
+              pageSizeOptions={[3, 5, 10]}
+              itemName="credenciais"
+            />
           </div>
         )}
 
@@ -601,7 +621,9 @@ export const FounderOpsApp: React.FC = () => {
                 <span className="text-[10px] font-mono text-neutral-500">{cashReconciliationBatches.length} lotes</span>
               </div>
 
-              {cashReconciliationBatches.map((batch) => (
+              {cashReconciliationBatches
+                .slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize)
+                .map((batch) => (
                 <div
                   key={batch.batchId}
                   className="bg-neutral-950 border border-neutral-800 rounded-2xl p-2.5 space-y-1.5 text-xs font-mono"
@@ -620,6 +642,16 @@ export const FounderOpsApp: React.FC = () => {
                   </div>
                 </div>
               ))}
+
+              <PaginationControls
+                currentPage={batchPage}
+                totalItems={cashReconciliationBatches.length}
+                pageSize={batchPageSize}
+                onPageChange={setBatchPage}
+                onPageSizeChange={setBatchPageSize}
+                pageSizeOptions={[3, 5, 10]}
+                itemName="lotes de conciliação"
+              />
             </div>
           </div>
         )}

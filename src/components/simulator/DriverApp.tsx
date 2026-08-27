@@ -79,6 +79,9 @@ export const DriverApp: React.FC = () => {
           <img
             src={currentDriver.photoUrl}
             alt={currentDriver.name}
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
             className="w-9 h-9 rounded-xl object-cover border-2 border-[#FFC107]"
           />
           <div>

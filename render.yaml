@@ -1,0 +1,98 @@
+# @license
+# SPDX-License-Identifier: Apache-2.0
+#
+# RIDING.ao - Production Infrastructure Blueprint for Render (Render.com)
+# Architecture: Horizontal Auto-Scaling, Stateless Compute, Zero-Downtime Rolling Deploys
+
+services:
+  # -----------------------------------------------------------------------------
+  # 1. API GATEWAY & DISPATCH ENGINE (Stateless Web Service with Auto-Scaling)
+  # -----------------------------------------------------------------------------
+  - type: web
+    name: riding-api-gateway
+    env: node
+    plan: standard
+    region: frankfurt # Low latency gateway to Luanda (Angola)
+    buildCommand: npm install && npm run build
+    startCommand: node server.ts
+    healthCheckPath: /health
+    autoDeploy: true
+    numInstances: 2 # Minimum baseline instances for high availability
+
+    # Horizontal Auto-Scaling Policy
+    scaling:
+      minInstances: 2
+      maxInstances: 10
+      targetCPUPercent: 65
+      targetMemoryPercent: 75
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: WEB_CONCURRENCY
+        value: "4"
+      - key: MAX_CONCURRENCY
+        value: "80"
+      - key: MAX_WEBHOOK_CONCURRENCY
+        value: "30"
+      - key: REQUEST_TIMEOUT_MS
+        value: "8000"
+      - key: RATE_LIMIT_PER_IP
+        value: "150"
+      - key: DATABASE_POOL_MIN
+        value: "2"
+      - key: DATABASE_POOL_MAX
+        value: "10"
+      - key: FIREBASE_PROJECT_ID
+        value: riding-37f72
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false # Loaded securely from Render Secret Manager
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: riding-redis-cluster
+          property: connectionString
+
+    # Zero-Downtime, Security, HTTPS & Cache Policies
+    headers:
+      - path: /*
+        name: Strict-Transport-Security
+        value: "max-age=63072000; includeSubDomains; preload"
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Content-Security-Policy
+        value: "upgrade-insecure-requests"
+      - path: /assets/*
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /index.html
+        name: Cache-Control
+        value: "no-cache, no-store, must-revalidate, max-age=0"
+
+  # -----------------------------------------------------------------------------
+  # 2. DISTRIBUTED REDIS CLUSTER (Shared In-Memory Locks & Rate Limiting)
+  # -----------------------------------------------------------------------------
+  - type: redis
+    name: riding-redis-cluster
+    plan: standard
+    region: frankfurt
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: [] # Private network access only from Render services
+
+# -----------------------------------------------------------------------------
+# 3. HORIZONTAL SCALING GUARANTEES:
+# - Zero Local State: All sessions and active ride locks reside in Firestore / Redis.
+# - Connection Draining: Render gives 30s grace period on SIGTERM before SIGKILL.
+# - Health Checks: Probes at /health must return 200 within 5s before routing traffic.
+# - DB Pool Protection: Total DB connections = (numInstances * DATABASE_POOL_MAX) <= 100.
+# -----------------------------------------------------------------------------

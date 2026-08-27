@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSystem } from '../../context/SystemContext';
 import { DeviceViewportWrapper } from '../shell/DeviceViewportWrapper';
 import { formatAOA, calculateHaversineDistanceKm } from '../../utils/geohashUtils';
+import { usePerformanceProfile } from '../../utils/performanceOptimizer';
 import {
   parseProgressiveIntent,
   getActiveHabitSuggestion,
@@ -32,7 +33,9 @@ import {
   Sliders,
   MapPin,
   Car,
-  Move
+  Move,
+  Zap,
+  Wifi
 } from 'lucide-react';
 import { URBAN_ANCHORS, REGISTERED_ENTITIES, anchorToLocation } from '../../data/urbanAnchorsData';
 import { UrbanAnchor, OperationalTripPlan } from '../../types/intentTypes';
@@ -51,6 +54,17 @@ export const PassengerApp: React.FC = () => {
     setTriggerDialpadOpen,
     drivers
   } = useSystem();
+
+  // Performance & Network optimization profile
+  const {
+    isLowSpec,
+    isSlowNetwork,
+    targetFps,
+    enableBlurEffects,
+    forceLowDataMode,
+    toggleForceLowDataMode,
+    effectiveType
+  } = usePerformanceProfile();
 
   // Progressive UI States
   // state 1: Map + Clean Question Capsule + Habit Pill
@@ -105,7 +119,7 @@ export const PassengerApp: React.FC = () => {
     }
   }, [intentInput, passengerGpsLocation, pricingConfig]);
 
-  // Live Map Canvas Rendering for Passenger View
+  // Live Map Canvas Rendering for Passenger View (Optimized for low-spec devices & slow battery drain)
   useEffect(() => {
     const canvas = mapCanvasRef.current;
     if (!canvas) return;
@@ -114,6 +128,8 @@ export const PassengerApp: React.FC = () => {
 
     let animationId: number;
     let pulse = 0;
+    let lastFrameTime = performance.now();
+    const frameIntervalMs = 1000 / targetFps;
 
     const minLat = -9.05;
     const maxLat = -8.75;
@@ -126,7 +142,21 @@ export const PassengerApp: React.FC = () => {
       return { x, y };
     };
 
-    const render = () => {
+    const render = (now: number) => {
+      // Pause animation if page is in background to save battery
+      if (document.hidden) {
+        animationId = requestAnimationFrame(render);
+        return;
+      }
+
+      // Frame throttle for low-spec / battery preservation
+      const elapsed = now - lastFrameTime;
+      if (elapsed < frameIntervalMs) {
+        animationId = requestAnimationFrame(render);
+        return;
+      }
+      lastFrameTime = now - (elapsed % frameIntervalMs);
+
       pulse = (pulse + 0.04) % (Math.PI * 2);
       const w = canvas.width;
       const h = canvas.height;
@@ -272,9 +302,9 @@ export const PassengerApp: React.FC = () => {
       animationId = requestAnimationFrame(render);
     };
 
-    render();
+    animationId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animationId);
-  }, [drivers, activeTrip, resolution.plan, passengerGpsLocation]);
+  }, [drivers, activeTrip, resolution.plan, passengerGpsLocation, targetFps]);
 
   // Voice Simulation Mic Toggle
   const handleToggleMic = () => {
@@ -455,29 +485,53 @@ export const PassengerApp: React.FC = () => {
       borderAccentColor="border-neutral-700/90"
     >
       {/* 1. Mobile Top Notch & Status Bar */}
-      <div className="absolute top-0 inset-x-0 z-30 bg-neutral-950/85 backdrop-blur-md px-5 py-2 flex items-center justify-between text-[11px] font-mono text-neutral-300 border-b border-white/5">
+      <div className={`absolute top-0 inset-x-0 z-30 px-5 py-2 flex items-center justify-between text-[11px] font-mono text-neutral-300 border-b border-white/5 ${
+        enableBlurEffects ? 'bg-neutral-950/85 backdrop-blur-md' : 'bg-neutral-950'
+      }`}>
         <span className="font-bold">09:41</span>
-        <div className="w-20 h-3.5 bg-neutral-900 rounded-full mx-auto" />
-        <div className="flex items-center gap-1.5 text-[10px]">
-          {/* Disguised trigger dot next to 4G */}
+        <div className="w-16 h-3 bg-neutral-900 rounded-full mx-auto" />
+        <div className="flex items-center gap-2 text-[10px]">
+          {/* Data Saver / Low Spec Toggle */}
+          <button
+            onClick={toggleForceLowDataMode}
+            title={forceLowDataMode ? 'Modo Econômico Ativo (Rede Lenta/Bateria)' : 'Ativar Modo Econômico'}
+            className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold transition-all ${
+              forceLowDataMode || isSlowNetwork
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'bg-neutral-800 text-neutral-400 hover:text-white'
+            }`}
+          >
+            {forceLowDataMode ? '⚡ ECO' : effectiveType !== 'unknown' ? effectiveType.toUpperCase() : '4G'}
+          </button>
+
+          {/* Disguised trigger dot */}
           <button
             onClick={() => setTriggerDialpadOpen(true)}
             className="w-2.5 h-2.5 rounded-full bg-neutral-700/60 hover:bg-neutral-400 transition-colors cursor-pointer"
             aria-label="Status indicator"
             title="System Trigger"
           />
-          <span className="font-semibold text-emerald-400">• 4G</span>
           <span>🔋</span>
         </div>
       </div>
 
-      {/* 2. Top Brand Title Bar (Minimalist Floating Pill) */}
+      {/* 2. Top Brand Title Bar (Artistic Minimalist Floating Pill) */}
       <div className="absolute top-10 inset-x-0 z-20 px-4 flex items-center justify-between pointer-events-none">
-        <div className="bg-neutral-950/80 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full flex items-center gap-2 pointer-events-auto shadow-md">
-          <div className="w-4 h-4 rounded-full bg-[#005A2B] text-[#FFC107] flex items-center justify-center font-black text-[9px]">
-            G
+        <div className="bg-neutral-950/85 backdrop-blur-md border border-emerald-500/20 px-3.5 py-1.5 rounded-full flex items-center gap-2 pointer-events-auto shadow-lg shadow-black/40 hover:border-emerald-500/40 transition-all">
+          {/* Artistic Custom Monogram Icon */}
+          <div className="relative w-5 h-5 rounded-lg bg-gradient-to-br from-[#005A2B] via-emerald-600 to-[#00381B] border border-[#FFC107]/40 flex items-center justify-center shadow-inner overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-amber-400/20 via-transparent to-transparent" />
+            <span className="relative text-[10px] font-black italic tracking-tighter text-[#FFC107] font-mono select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              R
+            </span>
           </div>
-          <span className="font-black tracking-widest text-[11px] text-white">GO.BRO.AAO</span>
+          {/* Artistic Display Typography for RIDING */}
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-[13px] font-black italic tracking-[0.22em] bg-gradient-to-r from-white via-neutral-100 to-[#FFC107] bg-clip-text text-transparent drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+              RIDING
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FFC107] shadow-[0_0_6px_#FFC107] inline-block ml-0.5 animate-pulse" />
+          </div>
         </div>
 
         <div className="bg-neutral-950/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full flex items-center gap-1.5 text-[10px] font-mono text-[#FFC107] pointer-events-auto">
